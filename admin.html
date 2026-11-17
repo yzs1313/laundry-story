@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>لوحة التحكم الإدارية | قصة الغسيل</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --primary: #0284c7;
+  --primary-hover: #0369a1;
+  --primary-light: #e0f2fe;
+  --navy: #091e3a;
+  --navy-dark: #051325;
+  --card: #ffffff;
+  --bg: #f8fafc;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --ok: #10b981;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --radius: 14px;
+  --shadow: 0 4px 16px rgba(0,0,0,0.05);
+}
+
+[data-theme="dark"] {
+  --navy: #071322;
+  --navy-dark: #030a13;
+  --card: #10233b;
+  --bg: #091524;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --border: #1e3a5f;
+  --primary-light: rgba(2, 132, 199, 0.2);
+  --shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Cairo', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  direction: rtl;
+  min-height: 100vh;
+}
+
+/* Header */
+.top-nav {
+  background: var(--navy);
+  color: #fff;
+  padding: 14px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 900;
+  font-size: 1.25rem;
+  color: #fff;
+  text-decoration: none;
+}
+.brand-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #0284c7, #38bdf8);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(2, 132, 199, 0.4);
+}
+
+.top-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.user-badge {
+  background: rgba(255,255,255,0.1);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.user-badge b { color: #38bdf8; }
+
+.btn-logout {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-logout:hover {
+  background: var(--bad);
+  color: #fff;
+}
+
+.container {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+/* Login Card (Supports Email / Phone + OTP or Password) */
+#loginSection {
+  max-width: 420px;
+  margin: 50px auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 36px 28px;
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+.login-logo {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0284c7, #38bdf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  color: #fff;
+}
+#loginSection h2 {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+#loginSection p {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin-bottom: 24px;
+}
+
+.login-method-tabs {
+  display: flex;
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 4px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+.lm-tab {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--muted);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.lm-tab.active {
+  background: var(--card);
+  color: var(--primary);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.field-wrap {
+  text-align: right;
+  margin-bottom: 16px;
+}
+.field-label {
+  display: block;
+  font-size: 0.84rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.field {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.field:focus {
+  border-color: var(--primary);
+  background: var(--card);
+}
+
+.otp-boxes-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  direction: ltr;
+  margin: 12px 0;
+}
+.otp-input-single {
+  width: 50px;
+  height: 52px;
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  border-radius: 10px;
+  border: 2px solid var(--border);
+  background: var(--bg);
+  color: var(--primary);
+  outline: none;
+}
+.otp-input-single:focus {
+  border-color: var(--primary);
+  background: var(--card);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 13px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #fff;
+  border: 0;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+}
+
+.err-box {
+  color: var(--bad);
+  font-weight: 700;
+  font-size: 0.86rem;
+  min-height: 1.5em;
+  margin-bottom: 12px;
+}
+
+/* Dashboard App */
+#dashboardApp { display: none; }
+
+/* Navigation Tabs */
+.dashboard-nav {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 12px;
+  overflow-x: auto;
+}
+.dash-tab-btn {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--muted);
+  padding: 9px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.dash-tab-btn:hover {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+.dash-tab-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* Stats Cards */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+.stat-card span { font-size: 0.82rem; color: var(--muted); display: block; font-weight: 700; }
+.stat-card b { font-size: 1.8rem; font-weight: 900; color: var(--primary); display: block; margin-top: 4px; }
+
+/* Controls Bar */
+.controls-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: var(--shadow);
+}
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.btn-sm {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-sm:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.btn-sm.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* Booking Card */
+.booking-item {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s;
+}
+.booking-item:hover {
+  transform: translateY(-2px);
+}
+.booking-item.cancelled {
+  opacity: 0.55;
+  background: rgba(0,0,0,0.02);
+}
+
+.item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.item-date {
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hour-chip {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 0.76rem;
+  padding: 3px 8px;
+  border-radius: var(--radius);
+}
+
+.status-pill {
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+}
+.status-pill.new { color: var(--warn); border-color: var(--warn); background: #fef3c7; }
+.status-pill.confirmed { color: var(--primary); border-color: var(--primary); background: #e0f2fe; }
+.status-pill.in_progress { color: #8b5cf6; border-color: #8b5cf6; background: #ede9fe; }
+.status-pill.done { color: var(--ok); border-color: var(--ok); background: #dcfce7; }
+.status-pill.cancelled { color: var(--bad); border-color: var(--bad); background: #fee2e2; }
+
+.item-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px 18px;
+  font-size: 0.92rem;
+  margin-bottom: 16px;
+}
+.item-body b { color: var(--text); }
+.item-body span { color: var(--muted); }
+
+.verified-tag {
+  color: var(--ok);
+  font-size: 0.75rem;
+  background: #dcfce7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-top: 1px dashed var(--border);
+  padding-top: 14px;
+}
+.item-actions a, .item-actions button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.act-wa { background: #25d366; color: #fff; border: 0; }
+.act-map { background: #f8fafc; color: #0284c7; border: 1.5px solid #0284c7; }
+.act-confirm { background: #0284c7; color: #fff; border: 0; }
+.act-progress { background: #8b5cf6; color: #fff; border: 0; }
+.act-done { background: #10b981; color: #fff; border: 0; }
+.act-cancel { background: transparent; color: #ef4444; border: 1.5px solid #ef4444; }
+
+/* Admin Accounts Management Table */
+.admin-card-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+.admin-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.admin-box-header h3 {
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+.admin-table th, .admin-table td {
+  padding: 12px 14px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+.admin-table th {
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 800;
+}
+.role-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+.role-super { background: #e0f2fe; color: #0284c7; }
+.role-manager { background: #fef3c7; color: #d97706; }
+.role-washer { background: #dcfce7; color: #15803d; }
+
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-left: 6px;
+}
+.status-dot.active { background: var(--ok); }
+.status-dot.suspended { background: var(--bad); }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+  background: var(--card);
+  color: var(--text);
+  border-radius: var(--radius);
+  max-width: 480px;
+  width: 100%;
+  padding: 28px;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+.close-modal-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+@media (max-width: 800px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-table { display: block; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="top-nav">
+  <a href="index.html" class="brand-wrap" target="_blank">
+    <div class="brand-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
+        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+    <span>قصة الغسيل · الإدارة</span>
+  </a>
+
+  <div class="top-user-pill">
+    <div class="user-badge" id="loggedUserPill" style="display:none;">
+      <span>مرحباً، <b id="loggedUserName">المدير العام</b></span>
+      <span class="role-badge role-super" id="loggedUserRole">مدير عام</span>
+    </div>
+    <a href="index.html" target="_blank" class="btn-sm" style="background:rgba(255,255,255,0.1);color:#fff;border-color:rgba(255,255,255,0.2);">الموقع</a>
+    <button id="logoutBtn" class="btn-logout" style="display:none;">خروج</button>
+  </div>
+</header>
+
+<main class="container">
+  
+  <!-- Login Section (Supports Email or Phone + OTP or Password) -->
+  <div id="loginSection">
+    <div class="login-logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+    </div>
+    <h2>دخول إدارة قصة الغسيل</h2>
+    <p>سجّل الدخول بالبريد الإلكتروني وكلمة المرور</p>
+
+    <!-- Password Login Form -->
+    <form id="passwordLoginForm">
+      <div class="field-wrap">
+        <label class="field-label">البريد الإلكتروني:</label>
+        <input type="email" id="loginIdentifier" class="field" placeholder="البريد الإلكتروني" required autocomplete="username">
+      </div>
+      <div class="field-wrap">
+        <label class="field-label">كلمة المرور:</label>
+        <input type="password" id="loginPassword" class="field" placeholder="أدخل كلمة المرور" required autocomplete="current-password">
+      </div>
+      <div id="loginError" class="err-box" role="alert"></div>
+      <button type="submit" class="btn-primary">دخول لوحة التحكم</button>
+    </form>
+
+    <!-- Two-step verification: code sent to email -->
+    <form id="twoFaForm" style="display:none">
+      <p style="font-size:0.9rem;margin-bottom:12px;">أرسلنا رمز تحقق من 6 أرقام إلى بريدك الإلكتروني لإكمال الدخول (تفقد البريد المزعج Spam إذا لم يصل).</p>
+      <div class="field-wrap">
+        <label class="field-label">رمز التحقق:</label>
+        <input type="text" id="twoFaCode" class="field" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required style="text-align:center;letter-spacing:8px;font-size:1.3rem;">
+      </div>
+      <div id="twoFaError" class="err-box" role="alert"></div>
+      <button type="submit" class="btn-primary">تأكيد الدخول</button>
+      <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:0.85rem;">
+        <a href="#" id="twoFaResend">إعادة إرسال الرمز</a>
+        <a href="#" id="twoFaCancel">رجوع</a>
+      </div>
+    </form>
+
+  </div>
+
+  <!-- Dashboard App Screen -->
+  <div id="dashboardApp">
+
+    <!-- Navigation Tabs -->
+    <div class="dashboard-nav">
+      <button type="button" class="dash-tab-btn active" data-tab="tab-bookings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+        <span>الحجوزات والمواعيد</span>
+      </button>
+
+      <button type="button" class="dash-tab-btn" data-tab="tab-admins">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>حسابات الأدمن والموظفين</span>
+      </button>
+
+      <button type="button" class="dash-tab-btn" data-tab="tab-reviews">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span>تقييمات العملاء</span>
+      </button>
+    </div>
+    
+    <!-- Tab 1: Bookings Management -->
+    <div id="tab-bookings" class="tab-content-pane">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span>إجمالي الحجوزات</span>
+          <b id="statTotal">0</b>
+        </div>
+        <div class="stat-card">
+          <span>حجوزات جديدة</span>
+          <b id="statNew" style="color:var(--warn);">0</b>
+        </div>
+        <div class="stat-card">
+          <span>مؤكدة للتنفيذ</span>
+          <b id="statConfirmed" style="color:var(--primary);">0</b>
+        </div>
+        <div class="stat-card">
+          <span>تمت بنجاح</span>
+          <b id="statDone" style="color:var(--ok);">0</b>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <div class="filter-group">
+          <input type="date" id="dateFilter" class="btn-sm" style="padding:7px 10px;" aria-label="فلترة بتاريخ">
+          <button type="button" class="btn-sm active" id="btnUpcoming">الحجوزات القادمة</button>
+          <button type="button" class="btn-sm" id="btnAllDates">عرض الكل</button>
+        </div>
+
+        <div class="filter-group">
+          <select id="adminFilter" class="btn-sm" style="padding:7px 10px;" aria-label="فلترة حسب الأدمن"><option value="">كل المسؤولين</option></select>
+          <span style="font-size:.8rem;color:var(--muted)">من</span>
+          <input type="date" id="fromFilter" class="btn-sm" style="padding:7px 10px;" aria-label="من تاريخ">
+          <span style="font-size:.8rem;color:var(--muted)">إلى</span>
+          <input type="date" id="toFilter" class="btn-sm" style="padding:7px 10px;" aria-label="إلى تاريخ">
+          <button type="button" class="btn-sm" id="btnInventory">📊 جرد</button>
+        </div>
+
+        <div class="filter-group">
+          <input type="text" id="searchInput" class="btn-sm" style="width:200px;" placeholder="بحث بالجوال، الاسم، أو السيارة">
+          <button type="button" class="btn-sm" id="refreshBtn">تحديث ⟳</button>
+        </div>
+      </div>
+
+      <div id="statusAlert" class="err-box"></div>
+      <div id="inventoryBox" style="display:none"></div>
+      <div id="bookingsList"></div>
+    </div>
+
+    <!-- Tab 2: Admin & Staff Accounts Management -->
+    <div id="tab-admins" class="tab-content-pane" style="display:none;">
+      <div class="admin-card-box">
+        <div class="admin-box-header">
+          <div>
+            <h3>حسابات الأدمن وفريق العمل</h3>
+            <p style="font-size:0.85rem;color:var(--muted);">إدارة صلاحيات الوصول، إضافة موظفين جدد، وتحديد الأدوار</p>
+          </div>
+          <button type="button" class="btn-primary" id="openAddAdminModalBtn" style="width:auto;padding:9px 18px;font-size:0.9rem;">
+            + إضافة حساب أدمن جديد
+          </button>
+        </div>
+
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>المسؤول</th>
+              <th>البريد الإلكتروني</th>
+              <th>رقم الجوال</th>
+              <th>الرتبة والصلاحية</th>
+              <th>الحالة</th>
+              <th>الإجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="adminsTableBody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Tab 3: Customer Reviews -->
+    <div id="tab-reviews" class="tab-content-pane" style="display:none;">
+      <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-card">
+          <span>متوسط التقييم العام</span>
+          <b style="color:#f59e0b;" id="adminAvgRating">4.9 ★</b>
+        </div>
+        <div class="stat-card">
+          <span>إجمالي التقييمات المسجلة</span>
+          <b id="adminReviewsCount">0</b>
+        </div>
+        <div class="stat-card">
+          <span>تقييمات 5 نجوم</span>
+          <b style="color:var(--ok);" id="adminFiveStarCount">0</b>
+        </div>
+      </div>
+
+      <div class="controls-bar">
+        <h3 style="font-size:1.1rem;font-weight:800;">سجل تعليقات وتقييمات العملاء الموثقة</h3>
+        <button type="button" class="btn-sm" id="refreshReviewsBtn">تحديث التقييمات ⟳</button>
+      </div>
+
+      <div id="reviewsListAdmin"></div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- Modal: Add New Admin Account -->
+<div class="modal-overlay" id="addAdminModal">
+  <div class="modal-box">
+    <button type="button" class="close-modal-btn" id="closeAddAdminModal">&times;</button>
+    <h3 style="font-size:1.3rem;font-weight:900;margin-bottom:6px;">إضافة حساب أدمن أو موظف جديد</h3>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:18px;">أنشئ حساباً للمدير أو فني الاستقبال والمغسلة</p>
+
+    <form id="newAdminForm">
+      <div class="field-wrap">
+        <label class="field-label">الاسم الكامل:</label>
+        <input type="text" id="newAdminName" class="field" placeholder="مثال: فهد الروقي" required>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label">البريد الإلكتروني:</label>
+        <input type="email" id="newAdminEmail" class="field" placeholder="مثال: fahad@qissatghaseel.com" required>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label">رقم الجوال (للدخول والتحقق):</label>
+        <input type="tel" id="newAdminPhone" class="field" placeholder="مثال: 0551234567" required>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label">الرتبة والصلاحية:</label>
+        <select id="newAdminRole" class="field">
+          <option value="super_admin">مدير عام (Super Admin - كامل الصلاحيات)</option>
+          <option value="manager">مسؤول حجوزات (Manager - إدارة الطلبات والتواصل)</option>
+          <option value="washer">فني غسيل ميداني (Washer - تحديث حالة الطلبات فقط)</option>
+        </select>
+      </div>
+
+      <div id="newAdminError" class="err-box" role="alert"></div>
+      <button type="submit" class="btn-primary">حفظ وتفعيل الحساب</button>
+    </form>
+  </div>
+</div>
+
+<script src="guard.js"></script>
+<script src="config.js"></script>
+<script>
+/* ========================================================
+   إعدادات النظام وإدارة الحسابات
+======================================================== */
+const CONFIG = {
+  supabaseUrl: (window.SITE_CONFIG||{}).supabaseUrl || "",
+  supabaseKey: (window.SITE_CONFIG||{}).supabaseKey || "",
+  slots: [
+    "2:00 م",
+    "3:00 م",
+    "4:00 م",
+    "5:00 م",
+    "6:00 م",
+    "7:00 م",
+    "8:00 م",
+    "9:00 م",
+    "10:00 م",
+    "11:00 م"
+  ]
+};
+
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, '0');
+const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+const statusLabels = {
+  new: "جديد (قيد المراجعة)",
+  confirmed: "مؤكد",
+  in_progress: "الفريق في الطريق 🚗",
+  done: "تم الإنجاز ⭐",
+  cancelled: "ملغي ✕"
+};
+
+const roleTitles = {
+  super_admin: { label: "مدير عام", css: "role-super" },
+  manager: { label: "مسؤول حجوزات", css: "role-manager" },
+  washer: { label: "فني غسيل ميداني", css: "role-washer" }
+};
+
+let currentAdminSession = null;
+let allBookingsCache = [];
+
+/* ========================================================
+   دخول حقيقي عبر Supabase Auth + صلاحيات من جدول admin_users
+======================================================== */
+const SB = CONFIG.supabaseUrl;
+let sbSession = null; // { access_token, refresh_token }
+
+function sbHeaders(extra) {
+  return Object.assign({
+    apikey: CONFIG.supabaseKey,
+    ...(sbSession ? { Authorization: `Bearer ${sbSession.access_token}` } : (String(CONFIG.supabaseKey).startsWith("eyJ") ? { Authorization: `Bearer ${CONFIG.supabaseKey}` } : {})),
+    "Content-Type": "application/json"
+  }, extra || {});
+}
+async function refreshSession() {
+  if (!sbSession || !sbSession.refresh_token) return false;
+  const r = await fetch(`${SB}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST", headers: { apikey: CONFIG.supabaseKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: sbSession.refresh_token })
+  });
+  if (!r.ok) return false;
+  const d = await r.json();
+  sbSession = { access_token: d.access_token, refresh_token: d.refresh_token };
+  sessionStorage.setItem("qs_sb_session", JSON.stringify(sbSession));
+  return true;
+}
+async function sb(path, opts) {
+  opts = opts || {};
+  let res = await fetch(`${SB}${path}`, Object.assign({}, opts, { headers: sbHeaders(opts.headers) }));
+  if (res.status === 401 && await refreshSession()) {
+    res = await fetch(`${SB}${path}`, Object.assign({}, opts, { headers: sbHeaders(opts.headers) }));
+  }
+  return res;
+}
+async function fetchMyAdminRow(email) {
+  const r = await sb(`/rest/v1/admin_users?email=eq.${encodeURIComponent(email)}&select=*`);
+  if (!r.ok) return null;
+  const rows = await r.json();
+  return rows[0] && rows[0].status === "active" ? rows[0] : null;
+}
+
+/* ---- التحقق بخطوتين: رمز على الإيميل بعد كلمة المرور (السيرفر يرفض البيانات قبل تأكيده) ---- */
+let pending2fa = null;
+async function fn2fa(name, body) {
+  const res = await fetch(`${SB}/functions/v1/${name}`, { method: "POST", headers: sbHeaders(), body: JSON.stringify(body || {}) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "حدث خطأ، حاول مرة أخرى");
+  return data;
+}
+function finish2fa() {
+  sessionStorage.setItem("qs_sb_session", JSON.stringify(sbSession));
+  $("twoFaForm").style.display = "none";
+  doLoginSuccess(pending2fa);
+}
+async function send2fa() {
+  try {
+    const r = await fn2fa("admin-2fa-send");
+    if (r.verified) finish2fa();
+  } catch (err) { $("twoFaError").textContent = err.message; }
+}
+function begin2fa() {
+  $("passwordLoginForm").style.display = "none";
+  $("twoFaForm").style.display = "block";
+  $("twoFaError").textContent = "";
+  $("twoFaCode").value = "";
+  send2fa();
+  setTimeout(() => $("twoFaCode").focus(), 100);
+}
+$("twoFaForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("twoFaError").textContent = "";
+  try {
+    await fn2fa("admin-2fa-verify", { code: $("twoFaCode").value.trim() });
+    finish2fa();
+  } catch (err) { $("twoFaError").textContent = err.message; }
+});
+$("twoFaResend").addEventListener("click", e => { e.preventDefault(); $("twoFaError").textContent = ""; send2fa(); });
+$("twoFaCancel").addEventListener("click", async e => {
+  e.preventDefault();
+  try { await sb("/auth/v1/logout", { method: "POST" }); } catch (x) {}
+  sessionStorage.removeItem("qs_sb_session"); location.reload();
+});
+
+$("passwordLoginForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("loginError").textContent = "";
+  if (!SB || !CONFIG.supabaseKey) { $("loginError").textContent = "لم يتم ربط قاعدة البيانات بعد (supabaseUrl / supabaseKey)."; return; }
+  const email = $("loginIdentifier").value.trim().toLowerCase();
+  const password = $("loginPassword").value;
+  const r = await fetch(`${SB}/auth/v1/token?grant_type=password`, {
+    method: "POST", headers: { apikey: CONFIG.supabaseKey, "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+  if (!r.ok) { $("loginError").textContent = "البريد أو كلمة المرور غير صحيحة."; return; }
+  const d = await r.json();
+  sbSession = { access_token: d.access_token, refresh_token: d.refresh_token };
+  const row = await fetchMyAdminRow(email);
+  if (!row) { sbSession = null; $("loginError").textContent = "هذا الحساب غير مصرح له بدخول لوحة التحكم."; return; }
+  pending2fa = row;
+  begin2fa();
+});
+
+function doLoginSuccess(adminObj) {
+  currentAdminSession = adminObj;
+  $("loginSection").style.display = "none";
+  $("dashboardApp").style.display = "block";
+  $("logoutBtn").style.display = "inline-block";
+  $("loggedUserPill").style.display = "flex";
+  $("loggedUserName").textContent = adminObj.name;
+  const roleInfo = roleTitles[adminObj.role] || roleTitles.super_admin;
+  $("loggedUserRole").textContent = roleInfo.label;
+  $("loggedUserRole").className = `role-badge ${roleInfo.css}`;
+  loadBookings();
+  renderAdminsTable();
+  loadAdminReviews();
+}
+
+// استعادة الجلسة بعد تحديث الصفحة (يُعاد التحقق من السيرفر دائماً)
+(async function restoreSession() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem("qs_sb_session") || "null");
+    if (!saved || !SB) return;
+    sbSession = saved;
+    if (!(await refreshSession())) { sbSession = null; sessionStorage.removeItem("qs_sb_session"); return; }
+    const u = await (await fetch(`${SB}/auth/v1/user`, { headers: sbHeaders() })).json();
+    const row = u && u.email ? await fetchMyAdminRow(u.email.toLowerCase()) : null;
+    if (!row) return;
+    pending2fa = row;
+    // هل أُكمل رمز الإيميل لهذه الجلسة؟ (السيرفر هو من يقرر)
+    const chk = await sb("/rest/v1/rpc/is_staff", { method: "POST", body: "{}" });
+    if (chk.ok && (await chk.json()) === true) doLoginSuccess(row);
+    else { $("loginSection").style.display = "block"; begin2fa(); }
+  } catch (e) {}
+})();
+
+$("logoutBtn").addEventListener("click", async () => {
+  try { await sb("/auth/v1/logout", { method: "POST" }); } catch (e) {}
+  sessionStorage.removeItem("qs_sb_session");
+  sbSession = null;
+  currentAdminSession = null;
+  location.reload();
+});
+
+/* التبديل بين تبويبات لوحة التحكم */
+document.querySelectorAll(".dash-tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".dash-tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-content-pane").forEach(p => p.style.display = "none");
+    btn.classList.add("active");
+    const target = btn.dataset.tab;
+    $(target).style.display = "block";
+  });
+});
+
+/* ========================================================
+   إدارة حسابات الأدمن والموظفين (Admin Accounts Management)
+======================================================== */
+async function renderAdminsTable() {
+  const tbody = $("adminsTableBody");
+  const r = await sb("/rest/v1/admin_users?select=*&order=created_at.asc");
+  const admins = r.ok ? await r.json() : [];
+  const isSuper = currentAdminSession && currentAdminSession.role === "super_admin";
+
+  tbody.innerHTML = admins.map(a => {
+    const roleInfo = roleTitles[a.role] || { label: a.role, css: "role-super" };
+    const isCurrent = currentAdminSession && currentAdminSession.email === a.email;
+    return `
+      <tr>
+        <td><b>${escapeHtml(a.name)}</b>${isCurrent ? '<span style="font-size:0.75rem;color:var(--primary);margin-right:6px;">(حسابك الحالي)</span>' : ''}</td>
+        <td><code>${escapeHtml(a.email)}</code></td>
+        <td dir="ltr" style="text-align:right;">${escapeHtml(a.phone)}</td>
+        <td><span class="role-badge ${roleInfo.css}">${roleInfo.label}</span></td>
+        <td><span class="status-dot ${a.status}"></span><span>${a.status === 'active' ? 'نشط' : 'موقوف'}</span></td>
+        <td>${isSuper && !isCurrent ? `
+          <button type="button" class="btn-sm" onclick="toggleAdminStatus(${a.id}, '${a.status}')" style="padding:4px 8px;font-size:0.78rem;">${a.status === 'active' ? 'تعطيل' : 'تفعيل'}</button>
+          <button type="button" class="btn-sm" onclick="deleteAdminAccount(${a.id})" style="padding:4px 8px;font-size:0.78rem;color:var(--bad);border-color:var(--bad);margin-right:4px;">حذف</button>
+        ` : '<span style="font-size:0.8rem;color:var(--muted);">—</span>'}</td>
+      </tr>`;
+  }).join("");
+  $("openAddAdminModalBtn").style.display = isSuper ? "" : "none";
+}
+
+const addAdminModal = $("addAdminModal");
+$("openAddAdminModalBtn").addEventListener("click", () => {
+  $("newAdminError").textContent = "";
+  $("newAdminForm").reset();
+  addAdminModal.classList.add("open");
+});
+$("closeAddAdminModal").addEventListener("click", () => addAdminModal.classList.remove("open"));
+addAdminModal.addEventListener("click", e => { if (e.target === addAdminModal) addAdminModal.classList.remove("open"); });
+
+// يضيف صلاحية للإيميل. حساب الدخول نفسه (الإيميل وكلمة المرور) يُنشأ من Supabase > Authentication > Users
+$("newAdminForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("newAdminError").textContent = "";
+  const row = {
+    name: $("newAdminName").value.trim(),
+    email: $("newAdminEmail").value.trim().toLowerCase(),
+    phone: $("newAdminPhone").value.trim().replace(/\s/g, ""),
+    role: $("newAdminRole").value,
+    status: "active"
+  };
+  const r = await sb("/rest/v1/admin_users", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(row) });
+  if (!r.ok) { $("newAdminError").textContent = r.status === 409 ? "البريد أو الجوال مسجل مسبقاً." : "تعذرت الإضافة (الصلاحية للمدير العام فقط)."; return; }
+  renderAdminsTable();
+  addAdminModal.classList.remove("open");
+  alert(`تمت إضافة صلاحية "${row.name}". أنشئ له حساب دخول بنفس البريد من Supabase > Authentication > Users.`);
+});
+
+window.toggleAdminStatus = async function(id, current) {
+  await sb(`/rest/v1/admin_users?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status: current === "active" ? "suspended" : "active" }) });
+  renderAdminsTable();
+};
+window.deleteAdminAccount = async function(id) {
+  if (!confirm("هل أنت متأكد من حذف هذا الحساب الإداري نهائياً؟")) return;
+  await sb(`/rest/v1/admin_users?id=eq.${id}`, { method: "DELETE" });
+  renderAdminsTable();
+};
+
+/* ========================================================
+   إدارة الحجوزات والمواعيد
+======================================================== */
+async function loadBookings() {
+  let rows = [];
+  const res = await sb("/rest/v1/bookings?select=*&order=date.asc");
+  if (res.ok) rows = await res.json();
+  else { $("bookingsList").innerHTML = '<div style="padding:40px;text-align:center;color:var(--bad)">تعذر جلب الحجوزات، سجّل الدخول من جديد.</div>'; return; }
+
+  rows.sort((a, b) => (a.date || "").localeCompare(b.date || "") || CONFIG.slots.indexOf(a.slot) - CONFIG.slots.indexOf(b.slot));
+  allBookingsCache = rows;
+  updateStats(rows);
+  renderBookingsList();
+}
+
+function updateStats(rows) {
+  $("statTotal").textContent = rows.length;
+  $("statNew").textContent = rows.filter(r => r.status === "new").length;
+  $("statConfirmed").textContent = rows.filter(r => r.status === "confirmed" || r.status === "in_progress").length;
+  $("statDone").textContent = rows.filter(r => r.status === "done").length;
+}
+
+function applyBookingFilters(rows) {
+  const dateVal = $("dateFilter").value, from = $("fromFilter").value, to = $("toFilter").value;
+  const who = $("adminFilter").value;
+  let out = rows;
+  if (dateVal) out = out.filter(r => r.date === dateVal);
+  else if (from || to) out = out.filter(r => (!from || r.date >= from) && (!to || r.date <= to));
+  else if ($("btnUpcoming").classList.contains("active")) out = out.filter(r => r.date >= isoDate(new Date()));
+  if (who === "__none") out = out.filter(r => !r.accepted_by);
+  else if (who) out = out.filter(r => r.accepted_by === who);
+  return out;
+}
+
+function refreshAdminFilterOptions() {
+  const sel = $("adminFilter"), cur = sel.value;
+  const map = new Map();
+  allBookingsCache.forEach(r => { if (r.accepted_by) map.set(r.accepted_by, r.accepted_by_name || r.accepted_by); });
+  sel.innerHTML = '<option value="">كل المسؤولين</option><option value="__none">لم يقبلها أحد بعد</option>' +
+    [...map].map(([e, n]) => `<option value="${escapeHtml(e)}">${escapeHtml(n)}</option>`).join("");
+  sel.value = [...sel.options].some(o => o.value === cur) ? cur : "";
+}
+
+// جرد: لكل أدمن عدد الحجوزات المقبولة والمنجزة والمبالغ (حسب الفلاتر الحالية)
+function renderInventory() {
+  const rows = applyBookingFilters(allBookingsCache).filter(r => r.status !== "cancelled");
+  const by = new Map();
+  rows.forEach(r => {
+    const key = r.accepted_by || "__none";
+    if (!by.has(key)) by.set(key, { name: r.accepted_by_name || (r.accepted_by ? r.accepted_by : "لم تُقبل بعد"), n: 0, done: 0, total: 0, doneTotal: 0, paid: 0 });
+    const g = by.get(key);
+    g.n++; g.total += Number(r.price) || 0;
+    if (r.status === "done") { g.done++; g.doneTotal += Number(r.price) || 0; }
+    if (r.payment_status === "paid") g.paid += Number(r.price) || 0;
+  });
+  const lines = [...by.values()].map(g => `<tr><td><b>${escapeHtml(g.name)}</b></td><td>${g.n}</td><td>${g.done}</td><td>${g.total} ر.س</td><td>${g.doneTotal} ر.س</td><td>${g.paid} ر.س</td></tr>`).join("");
+  const sum = k => [...by.values()].reduce((a, g) => a + g[k], 0);
+  $("inventoryBox").innerHTML = `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;overflow-x:auto">
+      <b>جرد الحجوزات (حسب الفلاتر الحالية، بدون الملغي)</b>
+      <table style="width:100%;margin-top:10px;border-collapse:collapse;text-align:right">
+        <thead><tr><th>الأدمن</th><th>حجوزات مقبولة</th><th>منجزة</th><th>إجمالي المبالغ</th><th>مبالغ المنجز</th><th>مدفوع إلكترونياً</th></tr></thead>
+        <tbody>${lines || '<tr><td colspan="6" style="color:var(--muted)">لا توجد بيانات</td></tr>'}
+        <tr style="border-top:2px solid var(--border)"><td><b>المجموع</b></td><td><b>${sum("n")}</b></td><td><b>${sum("done")}</b></td><td><b>${sum("total")} ر.س</b></td><td><b>${sum("doneTotal")} ر.س</b></td><td><b>${sum("paid")} ر.س</b></td></tr></tbody>
+      </table>
+    </div>`;
+}
+
+function renderBookingsList() {
+  refreshAdminFilterOptions();
+  if ($("inventoryBox").style.display !== "none") renderInventory();
+  const search = $("searchInput").value.trim().toLowerCase();
+  const dateVal = $("dateFilter").value;
+  let filtered = allBookingsCache;
+
+  filtered = applyBookingFilters(filtered);
+
+  if (search) {
+    filtered = filtered.filter(r => 
+      (r.name && r.name.toLowerCase().includes(search)) ||
+      (r.phone && r.phone.includes(search)) ||
+      (r.car && r.car.toLowerCase().includes(search))
+    );
+  }
+
+  if (!filtered.length) {
+    $("bookingsList").innerHTML = `
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:40px;text-align:center;color:var(--muted);">
+        لا توجد حجوزات مطابقة للفلتر المحدد.
+      </div>
+    `;
+    return;
+  }
+
+  $("bookingsList").innerHTML = filtered.map(item => {
+    const d = new Date((item.date || isoDate(new Date())) + "T12:00:00");
+    const dayArabic = d.toLocaleDateString("ar-SA-u-ca-gregory", { weekday: "long", day: "numeric", month: "long" });
+    const cleanPhone = String(item.phone || "").replace(/\D/g, "").replace(/^0/, "966");
+    const statusClass = item.status || "new";
+
+    const waText = encodeURIComponent(
+      `السلام عليكم أخي ${item.name}، معك فريق قصة الغسيل بخصوص موعد غسيل سيارتك اليوم ${dayArabic} الساعة ${item.slot}. الفريق في أتم الجاهزية للوصول لموقعك.`
+    );
+
+    return `
+      <div class="booking-item ${statusClass === 'cancelled' ? 'cancelled' : ''}">
+        <div class="item-top">
+          <div class="item-date">
+            <span>${escapeHtml(dayArabic)} · ${escapeHtml(item.slot)}</span>
+            <span class="hour-chip">مدة ساعة</span>
+          </div>
+          <span class="status-pill ${statusClass}">${statusLabels[statusClass] || statusClass}</span>
+        </div>
+
+        <div class="item-body">
+          <div>
+            <span>العميل:</span> 
+            <b>${escapeHtml(item.name)}</b>
+            ${item.phone_verified ? '<span class="verified-tag">✓ رقم موثق</span>' : ''}
+          </div>
+          <div>
+            <span>الجوال:</span> 
+            <b><a href="tel:${escapeHtml(item.phone)}" style="color:var(--primary);text-decoration:none;">${escapeHtml(item.phone)}</a></b>
+          </div>
+          <div><span>الخدمة:</span> <b>${escapeHtml(item.service)}</b></div>
+          <div><span>المبلغ:</span> <b>${escapeHtml(item.price)} ر.س (${item.pay === 'online' ? 'أونلاين' : item.pay === 'transfer' ? 'تحويل بنكي' : 'عند الوصول'}${item.payment_status === 'paid' ? ' · ✓ مدفوع' : (item.pay === 'cash' ? '' : ' · غير مدفوع بعد')})</b></div>
+          <div><span>السيارة:</span> <b>${escapeHtml(item.car || '—')}</b></div>
+          <div><span>قُبل بواسطة:</span> <b>${item.accepted_by_name ? escapeHtml(item.accepted_by_name) + ' · ' + escapeHtml(new Date(item.accepted_at).toLocaleString("ar-SA-u-ca-gregory", { dateStyle: "short", timeStyle: "short" })) : '—'}</b></div>
+          <div><span>الموقع:</span> <b>${item.loc_url ? `<a href="${escapeHtml(item.loc_url)}" target="_blank" style="color:var(--primary);">فتح خرائط قوقل 📍</a>` : 'محدد داخل الدوادمي'}</b></div>
+        </div>
+
+        <div class="item-actions">
+          <a href="https://wa.me/${cleanPhone}?text=${waText}" class="act-wa" target="_blank" rel="noopener">
+            💬 واتساب العميل
+          </a>
+          <a href="tel:${escapeHtml(item.phone)}" class="act-map">
+            📞 اتصال
+          </a>
+          <button type="button" class="act-confirm" onclick="updateBookingStatus(${item.id}, 'confirmed')">
+            ✓ تأكيد
+          </button>
+          <button type="button" class="act-progress" onclick="updateBookingStatus(${item.id}, 'in_progress')">
+            🚗 في الطريق
+          </button>
+          <button type="button" class="act-done" onclick="updateBookingStatus(${item.id}, 'done')">
+            ⭐ تم الإنجاز
+          </button>
+          <button type="button" class="act-cancel" onclick="updateBookingStatus(${item.id}, 'cancelled')">
+            ✕ إلغاء
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+window.updateBookingStatus = async function(id, newStatus) {
+  if (newStatus === "cancelled" && !confirm("هل أنت متأكد من إلغاء هذا الحجز؟")) return;
+  const r = await sb(`/rest/v1/bookings?id=eq.${id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: newStatus }) });
+  if (!r.ok) { alert("تعذر تحديث الحالة."); return; }
+  await loadBookings();
+};
+
+$("btnInventory").addEventListener("click", () => {
+  const box = $("inventoryBox");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+  renderBookingsList();
+});
+["adminFilter", "fromFilter", "toFilter"].forEach(id => $(id).addEventListener("change", () => { if (id !== "adminFilter") $("dateFilter").value = ""; renderBookingsList(); }));
+$("dateFilter").addEventListener("change", () => {
+  $("btnUpcoming").classList.remove("active");
+  $("btnAllDates").classList.remove("active");
+  renderBookingsList();
+});
+
+$("btnUpcoming").addEventListener("click", function() {
+  $("dateFilter").value = "";
+  this.classList.add("active");
+  $("btnAllDates").classList.remove("active");
+  renderBookingsList();
+});
+
+$("btnAllDates").addEventListener("click", function() {
+  $("dateFilter").value = "";
+  this.classList.add("active");
+  $("btnUpcoming").classList.remove("active");
+  renderBookingsList();
+});
+
+$("searchInput").addEventListener("input", renderBookingsList);
+$("refreshBtn").addEventListener("click", loadBookings);
+
+/* ========================================================
+   تقييمات العملاء
+======================================================== */
+async function loadAdminReviews() {
+  let reviews = [];
+  const r = await sb("/rest/v1/reviews?select=*&order=created_at.desc");
+  if (r.ok) reviews = (await r.json()).map(x => ({ ...x, date: new Date(x.created_at).toLocaleDateString("ar-SA-u-ca-gregory") }));
+  if (!reviews.length) {
+    $("adminAvgRating").textContent = "—"; $("adminReviewsCount").textContent = 0; $("adminFiveStarCount").textContent = 0;
+    $("reviewsListAdmin").innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">لا توجد تقييمات بعد.</div>';
+    return;
+  }
+  const total = reviews.length;
+  const fiveStars = reviews.filter(r => r.rating === 5).length;
+  const avg = (reviews.reduce((acc, r) => acc + (r.rating || 5), 0) / total).toFixed(1);
+
+  $("adminAvgRating").textContent = `${avg} ★`;
+  $("adminReviewsCount").textContent = total;
+  $("adminFiveStarCount").textContent = fiveStars;
+
+  $("reviewsListAdmin").innerHTML = reviews.map(r => `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <div>
+          <b>${escapeHtml(r.name)}</b>
+          <span style="color:var(--muted);font-size:0.85rem;margin-right:8px;">${escapeHtml(r.district || 'الدوادمي')} · ${escapeHtml(r.date || 'مؤخراً')}</span>
+        </div>
+        <div style="color:#f59e0b;font-size:1.15rem;">${"★".repeat(r.rating || 5)}</div>
+      </div>
+      <p style="font-size:0.92rem;margin:8px 0;color:var(--text);">"${escapeHtml(r.comment)}"</p>
+      <div style="font-size:0.8rem;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span>الباقة: <b>${r.package === 'deep' ? 'الغسيل العميق' : 'الغسيل العادي'}</b>
+        · الحالة: <b style="color:${r.status === 'approved' ? 'var(--good,#16a34a)' : r.status === 'hidden' ? 'var(--bad)' : '#f59e0b'}">${r.status === 'approved' ? 'منشور' : r.status === 'hidden' ? 'مخفي' : 'بانتظار الموافقة'}</b></span>
+        <span>
+          ${r.status !== 'approved' ? `<button type="button" class="btn-sm" onclick="setReviewStatus(${r.id}, 'approved')">نشر</button>` : ''}
+          ${r.status !== 'hidden' ? `<button type="button" class="btn-sm" onclick="setReviewStatus(${r.id}, 'hidden')">إخفاء</button>` : ''}
+          <button type="button" class="btn-sm" style="color:var(--bad);border-color:var(--bad)" onclick="deleteReview(${r.id})">حذف</button>
+        </span>
+      </div>
+    </div>
+  `).join("");
+}
+
+window.setReviewStatus = async function(id, status) {
+  const r = await sb(`/rest/v1/reviews?id=eq.${id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status }) });
+  if (!r.ok) { alert("تعذر تحديث التقييم."); return; }
+  loadAdminReviews();
+};
+window.deleteReview = async function(id) {
+  if (!confirm("حذف هذا التقييم نهائياً؟")) return;
+  await sb(`/rest/v1/reviews?id=eq.${id}`, { method: "DELETE" });
+  loadAdminReviews();
+};
+
+$("refreshReviewsBtn").addEventListener("click", loadAdminReviews);
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[c]));
+}
+</script>
+</body>
+</html>
