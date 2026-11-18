@@ -985,7 +985,8 @@ $("passwordLoginForm").addEventListener("submit", async e => {
   const row = await fetchMyAdminRow(email);
   if (!row) { sbSession = null; $("loginError").textContent = "هذا الحساب غير مصرح له بدخول لوحة التحكم."; return; }
   pending2fa = row;
-  begin2fa();
+  sessionStorage.setItem("qs_sb_session", JSON.stringify(sbSession));
+  doLoginSuccess(row);
 });
 
 function doLoginSuccess(adminObj) {
@@ -1014,10 +1015,7 @@ function doLoginSuccess(adminObj) {
     const row = u && u.email ? await fetchMyAdminRow(u.email.toLowerCase()) : null;
     if (!row) return;
     pending2fa = row;
-    // هل أُكمل رمز الإيميل لهذه الجلسة؟ (السيرفر هو من يقرر)
-    const chk = await sb("/rest/v1/rpc/is_staff", { method: "POST", body: "{}" });
-    if (chk.ok && (await chk.json()) === true) doLoginSuccess(row);
-    else { $("loginSection").style.display = "block"; begin2fa(); }
+    doLoginSuccess(row);
   } catch (e) {}
 })();
 
