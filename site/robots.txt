@@ -6,4 +6,4 @@ Disallow: /admin.html
 Disallow: /admin
 Disallow: /setup.sql
 
-Sitemap: https://laundry-story.netlify.app/sitemap.xml
+Sitemap: https://laundry-story.vercel.app/sitemap.xml

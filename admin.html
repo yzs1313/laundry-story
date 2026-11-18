@@ -644,6 +644,11 @@ body {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         <span>تقييمات العملاء</span>
       </button>
+
+      <button type="button" class="dash-tab-btn" data-tab="tab-hours">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>أوقات وساعات الدوام</span>
+      </button>
     </div>
     
     <!-- Tab 1: Bookings Management -->
@@ -748,6 +753,52 @@ body {
       </div>
 
       <div id="reviewsListAdmin"></div>
+    </div>
+
+    <!-- Tab 4: Working Hours Management -->
+    <div id="tab-hours" class="tab-content-pane" style="display:none;">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);max-width:850px;margin:0 auto 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:16px;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+          <div>
+            <h3 style="font-size:1.3rem;font-weight:900;color:var(--text);margin-bottom:4px;">⏰ إدارة أوقات وساعات الدوام</h3>
+            <p style="font-size:0.88rem;color:var(--muted);margin:0;">تحكم في الفترات المتاحة لحجز العملاء. أي تعديل يتم حفظه هنا ينعكس فوراً على صفحة الحجز لجميع الزوار.</p>
+          </div>
+          <button type="button" class="btn-primary" id="saveHoursBtn" style="padding:10px 24px;font-size:0.95rem;">
+            💾 حفظ أوقات الدوام
+          </button>
+        </div>
+
+        <div id="hoursAlert" style="display:none;padding:12px 16px;border-radius:10px;margin-bottom:18px;font-weight:700;font-size:0.9rem;"></div>
+
+        <!-- فترات سريعة جاهزة -->
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:24px;">
+          <b style="font-size:0.9rem;display:block;margin-bottom:8px;color:var(--text);">⚡ نماذج فترات جاهزة وسريعة:</b>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn-sm" id="presetEveningBtn" style="background:#fff;border:1px solid var(--border);color:var(--text);">🌙 الفترة المسائية المعتادة (2:00 م - 11:00 م)</button>
+            <button type="button" class="btn-sm" id="presetFullBtn" style="background:#fff;border:1px solid var(--border);color:var(--text);">☀️ دوام كامل (9:00 ص - 11:00 م)</button>
+            <button type="button" class="btn-sm" id="presetMorningBtn" style="background:#fff;border:1px solid var(--border);color:var(--text);">🌅 فترة صباحية فقط (8:00 ص - 2:00 م)</button>
+          </div>
+        </div>
+
+        <!-- إضافة فترة جديدة -->
+        <div style="margin-bottom:24px;">
+          <b style="font-size:0.95rem;display:block;margin-bottom:10px;color:var(--text);">➕ إضافة فترة جديدة:</b>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="newSlotInput" class="field" placeholder="مثال: 1:00 م أو 10:00 ص" style="max-width:220px;">
+            <button type="button" class="btn-sm" id="addSlotBtn" style="background:var(--primary);color:#fff;padding:10px 20px;">إضافة للجدول +</button>
+          </div>
+        </div>
+
+        <!-- الفترات الحالية المعتمدة -->
+        <div>
+          <b style="font-size:0.95rem;display:block;margin-bottom:12px;color:var(--text);">
+            📋 الفترات المعتمدة حالياً في الموقع (<span id="slotsCountBadge">10</span> فترات):
+          </b>
+          <div id="slotsBadgesContainer" style="display:flex;gap:10px;flex-wrap:wrap;padding:16px;background:var(--bg);border-radius:12px;border:1px dashed var(--border);min-height:70px;align-items:center;">
+          </div>
+          <small style="color:var(--muted);display:block;margin-top:10px;">💡 يمكنك الضغط على علامة (✕) الحمراء بجانب أي وقت لإلغائه من الحجز، ثم اضغط على زر "حفظ أوقات الدوام".</small>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1301,6 +1352,132 @@ window.deleteReview = async function(id) {
 };
 
 $("refreshReviewsBtn").addEventListener("click", loadAdminReviews);
+
+/* ========================================================
+   إدارة وتعديل أوقات وساعات الدوام
+======================================================== */
+let currentWorkingSlots = [
+  "2:00 م", "3:00 م", "4:00 م", "5:00 م", "6:00 م",
+  "7:00 م", "8:00 م", "9:00 م", "10:00 م", "11:00 م"
+];
+
+function renderHoursEditor() {
+  const container = $("slotsBadgesContainer");
+  if (!container) return;
+  $("slotsCountBadge").textContent = currentWorkingSlots.length;
+
+  if (currentWorkingSlots.length === 0) {
+    container.innerHTML = '<span style="color:var(--muted);font-size:0.9rem;">لا توجد فترات محددة. أضف وقتاً جديداً أو اختر نموذجاً جاهزاً.</span>';
+    return;
+  }
+
+  container.innerHTML = currentWorkingSlots.map((slot, idx) => `
+    <div style="background:#fff;border:1px solid var(--border);padding:8px 16px;border-radius:999px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);font-weight:800;font-size:0.95rem;color:var(--text);">
+      <span>⏰ ${escapeHtml(slot)}</span>
+      <button type="button" onclick="removeWorkingSlot(${idx})" style="background:none;border:none;color:#ef4444;font-size:1.2rem;cursor:pointer;line-height:1;padding:0;font-weight:bold;" title="حذف هذه الفترة">&times;</button>
+    </div>
+  `).join("");
+}
+
+window.removeWorkingSlot = function(idx) {
+  currentWorkingSlots.splice(idx, 1);
+  renderHoursEditor();
+};
+
+function addWorkingSlot(val) {
+  val = String(val || "").trim();
+  if (!val) return;
+  if (!currentWorkingSlots.includes(val)) {
+    currentWorkingSlots.push(val);
+    renderHoursEditor();
+  }
+}
+
+async function loadWorkingHoursAdmin() {
+  try {
+    const r = await sb("/rest/v1/site_settings?key=eq.working_hours&select=value");
+    if (r.ok) {
+      const data = await r.json();
+      if (data && data[0] && data[0].value && Array.isArray(data[0].value.slots) && data[0].value.slots.length > 0) {
+        currentWorkingSlots = data[0].value.slots;
+      }
+    } else {
+      const local = localStorage.getItem("ls_working_hours");
+      if (local) currentWorkingSlots = JSON.parse(local);
+    }
+  } catch(e) {
+    console.warn("Could not load working hours from DB", e);
+  }
+  renderHoursEditor();
+}
+
+async function saveWorkingHoursAdmin() {
+  const btn = $("saveHoursBtn");
+  const alertBox = $("hoursAlert");
+  btn.disabled = true;
+  btn.textContent = "جاري الحفظ...";
+  alertBox.style.display = "none";
+
+  try {
+    const r = await sb("/rest/v1/site_settings", {
+      method: "POST",
+      headers: { "Prefer": "resolution=merge-duplicates" },
+      body: JSON.stringify({
+        key: "working_hours",
+        value: { slots: currentWorkingSlots },
+        updated_at: new Date().toISOString()
+      })
+    });
+
+    localStorage.setItem("ls_working_hours", JSON.stringify(currentWorkingSlots));
+    CONFIG.slots = [...currentWorkingSlots];
+
+    alertBox.style.display = "block";
+    alertBox.style.background = "#dcfce7";
+    alertBox.style.color = "#166534";
+    alertBox.style.border = "1px solid #bbf7d0";
+    alertBox.textContent = "✓ تم حفظ وتحديث أوقات الدوام بنجاح! ستظهر للعملاء في الموقع فوراً.";
+
+    setTimeout(() => { alertBox.style.display = "none"; }, 6000);
+  } catch(err) {
+    alertBox.style.display = "block";
+    alertBox.style.background = "#fee2e2";
+    alertBox.style.color = "#991b1b";
+    alertBox.style.border = "1px solid #fecaca";
+    alertBox.textContent = "تعذر الحفظ: " + (err.message || "خطأ غير متوقع");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "💾 حفظ أوقات الدوام";
+  }
+}
+
+$("addSlotBtn").addEventListener("click", () => {
+  const inp = $("newSlotInput");
+  addWorkingSlot(inp.value);
+  inp.value = "";
+  inp.focus();
+});
+$("newSlotInput").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    $("addSlotBtn").click();
+  }
+});
+$("presetEveningBtn").addEventListener("click", () => {
+  currentWorkingSlots = ["2:00 م", "3:00 م", "4:00 م", "5:00 م", "6:00 م", "7:00 م", "8:00 م", "9:00 م", "10:00 م", "11:00 م"];
+  renderHoursEditor();
+});
+$("presetFullBtn").addEventListener("click", () => {
+  currentWorkingSlots = ["9:00 ص", "10:00 ص", "11:00 ص", "12:00 م", "1:00 م", "2:00 م", "3:00 م", "4:00 م", "5:00 م", "6:00 م", "7:00 م", "8:00 م", "9:00 م", "10:00 م", "11:00 م"];
+  renderHoursEditor();
+});
+$("presetMorningBtn").addEventListener("click", () => {
+  currentWorkingSlots = ["8:00 ص", "9:00 ص", "10:00 ص", "11:00 ص", "12:00 م", "1:00 م", "2:00 م"];
+  renderHoursEditor();
+});
+$("saveHoursBtn").addEventListener("click", saveWorkingHoursAdmin);
+
+loadWorkingHoursAdmin();
 
 function escapeHtml(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({

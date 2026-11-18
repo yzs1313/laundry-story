@@ -2385,6 +2385,32 @@ function renderSlots() {
 }
 renderSlots();
 
+async function loadWorkingHours() {
+  try {
+    const cached = localStorage.getItem("ls_working_hours");
+    if (cached) {
+      const arr = JSON.parse(cached);
+      if (Array.isArray(arr) && arr.length > 0) {
+        CONFIG.slots = arr;
+        renderSlots();
+      }
+    }
+    const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/site_settings?key=eq.working_hours&select=value`, {
+      headers: { apikey: CONFIG.supabaseKey }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data[0] && data[0].value && Array.isArray(data[0].value.slots) && data[0].value.slots.length > 0) {
+        CONFIG.slots = data[0].value.slots;
+        localStorage.setItem("ls_working_hours", JSON.stringify(CONFIG.slots));
+        renderSlots();
+        if (typeof fetchTakenSlots === "function") fetchTakenSlots();
+      }
+    }
+  } catch(e) {}
+}
+loadWorkingHours();
+
 /* إدارة وحجز المواعيد بالساعة */
 function getLocalBookedSlots(dateStr) {
   try {

@@ -131,6 +131,32 @@ function renderSlots() {
 }
 renderSlots();
 
+async function loadWorkingHours() {
+  try {
+    const cached = localStorage.getItem("ls_working_hours");
+    if (cached) {
+      const arr = JSON.parse(cached);
+      if (Array.isArray(arr) && arr.length > 0) {
+        CONFIG.slots = arr;
+        renderSlots();
+      }
+    }
+    const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/site_settings?key=eq.working_hours&select=value`, {
+      headers: { apikey: CONFIG.supabaseKey }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data[0] && data[0].value && Array.isArray(data[0].value.slots) && data[0].value.slots.length > 0) {
+        CONFIG.slots = data[0].value.slots;
+        localStorage.setItem("ls_working_hours", JSON.stringify(CONFIG.slots));
+        renderSlots();
+        if (typeof fetchTakenSlots === "function") fetchTakenSlots();
+      }
+    }
+  } catch(e) {}
+}
+loadWorkingHours();
+
 /* إدارة وحجز المواعيد بالساعة */
 function getLocalBookedSlots(dateStr) {
   try {
@@ -320,7 +346,7 @@ $("geoBtn").addEventListener("click", () => {
 });
 
 /* ========================================================
-   توثيق الجوال برمز SMS حقيقي (السيرفر يولّد الرمز ويرسله ويتحقق منه)
+   توثيق البريد برمز OTP حقيقي (السيرفر يولّد الرمز ويرسله ويتحقق منه)
 ======================================================== */
 const otpModal = $("otpModal");
 const otpDigits = ["otp1", "otp2", "otp3", "otp4", "otp5", "otp6"];
@@ -386,7 +412,7 @@ async function sendOtp() {
 
 $("resendOtpBtn").addEventListener("click", sendOtp);
 $("closeOtpModal").addEventListener("click", () => otpModal.classList.remove("open"));
-// إذا غيّر العميل رقمه بعد التوثيق نطلب توثيقاً جديداً
+// إذا غيّر العميل بريده بعد التوثيق نطلب توثيقاً جديداً
 $("custEmail").addEventListener("input", () => {
   if (normEmail($("custEmail").value) !== verifiedEmail) {
     verifiedEmail = ""; verifyToken = "";
@@ -394,7 +420,7 @@ $("custEmail").addEventListener("input", () => {
   }
 });
 
-/* إرسال الفورم وطلب التحقق من الجوال */
+/* إرسال الفورم وطلب التحقق من البريد وحفظ الحجز */
 form.addEventListener("submit", async e => {
   e.preventDefault();
   errorMsg.style.display = "none";
@@ -417,6 +443,7 @@ form.addEventListener("submit", async e => {
   if (!name) return showError("يرجى كتابة اسمك الكريم.");
   if (!phone || phone.length < 9) return showError("يرجى إدخال رقم جوال صحيح (مثال: 0533719216).");
   if (!locText) return showError("يرجى تحديد موقع السيارة (عبر زر GPS أو كتابة اسم الحي أو رابط الخريطة).");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return showError("أدخل بريداً إلكترونياً صحيحاً لاستلام رمز التحقق والإيصال.");
 
   let parsedCoords = parseCoordinatesFromText(locText) || currentCoordinates;
   const pkgObj = CONFIG.pricing[pkgKey];
@@ -443,9 +470,9 @@ form.addEventListener("submit", async e => {
     status: "new"
   };
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return showError("أدخل بريداً إلكترونياً صحيحاً لاستلام رمز التحقق والإيصال.");
-  // إذا لم يوثق البريد بعد، أرسل الرمز واطلب إدخاله
   if (!isDbConfigured) return showError("الخدمة غير مفعلة بعد، تواصل معنا عبر الواتساب لإتمام الحجز.");
+
+  // إذا لم يتم توثيق البريد بعد، أرسل الرمز وافتح نافذة الـ OTP
   if (!(verifyToken && verifiedEmail === normEmail(email))) {
     $("modalTargetPhone").textContent = email;
     otpDigits.forEach(id => $(id).value = "");
@@ -459,20 +486,35 @@ form.addEventListener("submit", async e => {
   finalizeBookingProcess();
 });
 
-// تأكيد رمز التحقق المدخل (يتحقق منه السيرفر)
+// تأكيد رمز التحقق المدخل وإرساله لدالة verify-otp ثم الحجز المباشر
 $("verifyAndConfirmBtn").addEventListener("click", async () => {
   const enteredCode = otpDigits.map(id => $(id).value).join("");
-  if (enteredCode.length !== 6) { $("otpErrorAlert").textContent = "أدخل الرمز المكوّن من 6 أرقام."; return; }
+  if (enteredCode.length !== 6) {
+    $("otpErrorAlert").textContent = "أدخل الرمز المكوّن من 6 أرقام.";
+    return;
+  }
+
   $("verifyAndConfirmBtn").disabled = true;
+  $("otpErrorAlert").textContent = "";
+
   try {
+    // 1. التحقق من الرمز عبر Edge Function (verify-otp)
     const r = await callFn("verify-otp", { email: currentBookingData.email, code: enteredCode });
-    verifyToken = r.token;
+
+    if (!r.valid && !r.success) {
+      throw new Error(r.error || "رمز التحقق غير صحيح");
+    }
+
+    verifyToken = r.token || "verified";
     verifiedEmail = normEmail(currentBookingData.email);
     $("phoneVerifiedStatus").style.display = "inline";
     otpModal.classList.remove("open");
-    finalizeBookingProcess();
+
+    // 2. بعد نجاح التحقق فوراً، نقوم بتثبيت الحجز وإرساله إلى (create-booking)
+    await finalizeBookingProcess();
+
   } catch (err) {
-    $("otpErrorAlert").textContent = err.message;
+    $("otpErrorAlert").textContent = err.message || "رمز التحقق غير صحيح أو انتهت صلاحيته";
   } finally {
     $("verifyAndConfirmBtn").disabled = false;
   }
@@ -495,7 +537,7 @@ async function finalizeBookingProcess() {
     currentBookingId = r.id;
   } catch (err) {
     submitBtn.disabled = false;
-    // انتهت صلاحية توثيق البريد (15 دقيقة): نطلب رمزاً جديداً تلقائياً
+    // انتهت صلاحية توثيق البريد: نطلب رمزاً جديداً تلقائياً
     if (/غير موثق|أعد التحقق/.test(err.message)) {
       verifyToken = ""; verifiedEmail = "";
       $("phoneVerifiedStatus").style.display = "none";
@@ -532,7 +574,7 @@ function generateWhatsAppUrl(data, ratingInfo) {
   let waMessage = 
 `*طلب حجز جديد موثق - ${CONFIG.brandName}* ✨
 -----------------------------
-🔒 *الحالة:* رقم موثق برسالة SMS ✓
+🔒 *الحالة:* بريد موثق برمز OTP ✓
 👤 *الاسم:* ${data.name}
 📱 *رقم الجوال:* ${data.phone}
 📧 *الإيميل:* ${data.email || '—'}
@@ -546,10 +588,15 @@ function generateWhatsAppUrl(data, ratingInfo) {
 💰 *الإجمالي:* ${data.price} ${CONFIG.currency}`;
 
   if (ratingInfo) {
-    waMessage += `\n-----------------------------\n⭐ *تقييم وانطباع العميل:* ${ratingInfo.rating}/5 نجوم\n💬 *التعليق:* ${ratingInfo.comment || 'خدمة ممتازة'}`;
+    waMessage += `
+-----------------------------
+⭐ *تقييم وانطباع العميل:* ${ratingInfo.rating}/5 نجوم
+💬 *التعليق:* ${ratingInfo.comment || 'خدمة ممتازة'}`;
   }
 
-  waMessage += `\n-----------------------------\nأرجو تأكيد الموعد، شكراً لكم!`;
+  waMessage += `
+-----------------------------
+أرجو تأكيد الموعد، شكراً لكم!`;
   return `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(waMessage)}`;
 }
 
@@ -560,7 +607,7 @@ function showSuccessScreen(data) {
   $("successReceiptDetails").innerHTML = `
     <div style="font-size:1.05rem;font-weight:900;margin-bottom:12px;color:var(--primary);border-bottom:1px solid var(--border);padding-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
       <span>تفاصيل الفاتورة والموعد</span>
-      <span style="font-size:0.75rem;background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;">✓ رقم موثق OTP</span>
+      <span style="font-size:0.75rem;background:#dcfce7;color:#166534;padding:2px 8px;border-radius:999px;">✓ بريد موثق OTP</span>
     </div>
     <div style="display:grid;gap:8px;font-size:0.92rem;">
       <div><b>الاسم:</b> ${escapeHtml(data.name)}</div>

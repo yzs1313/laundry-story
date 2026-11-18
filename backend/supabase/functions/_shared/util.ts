@@ -4,9 +4,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 export const admin = () =>
   createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-const ALLOWED = (Deno.env.get("ALLOWED_ORIGIN") ?? "*");
+const rawOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
+const ALLOWED = rawOrigin === "*" ? "*" : rawOrigin.trim().replace(/\/+$/, "");
 export const cors = {
   "Access-Control-Allow-Origin": ALLOWED,
+  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Content-Type": "application/json",
 };
@@ -51,7 +53,15 @@ export const validEmail = (e: string) => e.length <= 120 && /^[A-Za-z0-9._%+\-]+
 export const esc = (x: unknown) => String(x ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 
-// إرسال الإيميل عبر Gmail (مجاني). يحتاج GMAIL_USER و GMAIL_APP_PASSWORD
+// تشفير عنوان الرسالة بصيغة RFC 2047 Base64 لمنع أخطاء التنسيق مع الحروف العربية
+function formatSubject(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return `=?UTF-8?B?${btoa(bin)}?=`;
+}
+
+// إرسال الإيميل عبر Gmail بتنسيق HTML نظيف ومضبوط
 export async function sendMail(to: string, subject: string, html: string) {
   const user = Deno.env.get("GMAIL_USER")!;
   const client = new SMTPClient({
@@ -59,7 +69,12 @@ export async function sendMail(to: string, subject: string, html: string) {
       auth: { username: user, password: Deno.env.get("GMAIL_APP_PASSWORD")! } },
   });
   try {
-    await client.send({ from: `Laundry Story <${user}>`, to, subject, html });
+    await client.send({
+      from: `Laundry Story <${user}>`,
+      to,
+      subject: formatSubject(subject),
+      html,
+    });
   } finally {
     await client.close();
   }

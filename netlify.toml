@@ -1,3 +1,7 @@
+# فحص الأسرار في Netlify يبقى شغّالاً، ونستثني فقط قيماً عامة لا تُعد سرية (رابط الموقع).
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "ALLOWED_ORIGIN,BANK_HOLDER,BANK_NAME,BANK_IBAN"
+
 [[headers]]
   for = "/*"
   [headers.values]
@@ -9,5 +13,3 @@
   from = "/admin"
   to = "/admin.html"
   status = 200
-  [build.environment]
-  SECRETS_SCAN_ENABLED = "false"
