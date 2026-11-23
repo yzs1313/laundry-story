@@ -2579,12 +2579,21 @@ $("geoBtn").addEventListener("click", () => {
       statusEl.textContent = "✓ تم تحديد موقعك بنجاح داخل الدوادمي";
     } else {
       statusEl.className = "gps-status err";
-      statusEl.textContent = `⚠️ موقعك يبدو خارج نطاق تغطية ${CONFIG.area.name}. نحن نخدم الدوادمي وضواحيها.`;
+      statusEl.textContent = `⚠️ تعذر قراءة GPS الدقيق (شبكتك تتبع برج الرياض). اكتب اسم الحي أو الصق رابط بيتك.`;
     }
   }, () => {
     statusEl.className = "gps-status err";
     statusEl.textContent = "تعذر تحديد الموقع، يرجى تفعيل إذن الموقع أو كتابة اسم الحي.";
   }, { enableHighAccuracy: true, timeout: 10000 });
+});
+
+$("locationInput").addEventListener("input", () => {
+  currentCoordinates = null;
+  const statusEl = $("geoStatus");
+  if (statusEl) {
+    statusEl.className = "gps-status";
+    statusEl.textContent = "";
+  }
 });
 
 /* ========================================================
@@ -2686,7 +2695,13 @@ form.addEventListener("submit", async e => {
   if (!phone || phone.length < 9) return showError("يرجى إدخال رقم جوال صحيح (مثال: 0533719216).");
   if (!locText) return showError("يرجى تحديد موقع السيارة (عبر زر GPS أو كتابة اسم الحي أو رابط الخريطة).");
 
-  let parsedCoords = parseCoordinatesFromText(locText) || currentCoordinates;
+  let parsedCoords = parseCoordinatesFromText(locText);
+  if (!parsedCoords && currentCoordinates && isWithinDawadmi(currentCoordinates.lat, currentCoordinates.lng)) {
+    parsedCoords = currentCoordinates;
+  }
+  if (!parsedCoords || !isWithinDawadmi(parsedCoords.lat, parsedCoords.lng)) {
+    parsedCoords = { lat: CONFIG.area.lat, lng: CONFIG.area.lng };
+  }
   const pkgObj = CONFIG.pricing[pkgKey];
   const sizeObj = CONFIG.carSizes[sizeKey];
 

@@ -41,9 +41,12 @@ Deno.serve(async (req) => {
     if (!["cash", "transfer", "online"].includes(b.pay)) return json({ error: "طريقة دفع غير صحيحة" }, 400);
 
     const name = String(b.name ?? "").trim().slice(0, 80);
-    const lat = Number(b.lat), lng = Number(b.lng);
+    let lat = Number(b.lat), lng = Number(b.lng);
     if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(b.date) || !b.slot) return json({ error: "بيانات ناقصة" }, 400);
-    if (!(lat > 24.31 && lat < 24.71 && lng > 44.19 && lng < 44.59)) return json({ error: "الموقع خارج نطاق الخدمة (الدوادمي)" }, 400);
+    if (isNaN(lat) || isNaN(lng) || !(lat > 24.31 && lat < 24.71 && lng > 44.19 && lng < 44.59)) {
+      lat = 24.5077;
+      lng = 44.3923;
+    }
     if (new Date(b.date + "T23:59:59+03:00") < new Date()) return json({ error: "التاريخ منتهي" }, 400);
 
     const db = admin();
