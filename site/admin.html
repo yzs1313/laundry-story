@@ -608,6 +608,23 @@ body {
       <button type="submit" class="btn-primary">دخول لوحة التحكم</button>
     </form>
 
+    <!-- Two-step verification: code sent to email -->
+    <form id="twoFaForm" style="display:none">
+      <p style="font-size:0.9rem;margin-bottom:12px;">أرسلنا رمز تحقق من 6 أرقام إلى بريدك الإلكتروني لإكمال الدخول (تفقد البريد المزعج Spam إذا لم يصل).</p>
+      <div class="field-wrap">
+        <label class="field-label">رمز التحقق:</label>
+        <input type="text" id="twoFaCode" class="field" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required style="text-align:center;letter-spacing:8px;font-size:1.3rem;">
+      </div>
+      <div id="twoFaError" class="err-box" role="alert"></div>
+      <button type="submit" class="btn-primary">تأكيد الدخول</button>
+      <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:0.85rem;">
+        <a href="#" id="twoFaResend">إعادة إرسال الرمز</a>
+        <a href="#" id="twoFaCancel">رجوع</a>
+      </div>
+    </form>
+
+    <p id="buildTag" style="font-size:0.7rem;color:var(--muted);text-align:center;margin-top:14px;">نسخة اللوحة: 2fa-3</p>
+
   </div>
 
   <!-- Dashboard App Screen -->
@@ -795,7 +812,7 @@ body {
   <div class="modal-box">
     <button type="button" class="close-modal-btn" id="closeAddAdminModal">&times;</button>
     <h3 style="font-size:1.3rem;font-weight:900;margin-bottom:6px;">إضافة حساب أدمن أو موظف جديد</h3>
-    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:18px;">أنشئ حساباً للمدير أو فني الاستقبال والمغسلة</p>
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:18px;">يدخل بالإيميل وكلمة المرور، ثم يصله رمز تحقق على إيميله. استخدم إيميلاً حقيقياً يملكه.</p>
 
     <form id="newAdminForm">
       <div class="field-wrap">
@@ -809,7 +826,12 @@ body {
       </div>
 
       <div class="field-wrap">
-        <label class="field-label">رقم الجوال (للدخول والتحقق):</label>
+        <label class="field-label">كلمة المرور (8 أحرف على الأقل):</label>
+        <input type="password" id="newAdminPass" class="field" minlength="8" autocomplete="new-password" required>
+      </div>
+
+      <div class="field-wrap">
+        <label class="field-label">رقم الجوال:</label>
         <input type="tel" id="newAdminPhone" class="field" placeholder="مثال: 0551234567" required>
       </div>
 
@@ -828,6 +850,7 @@ body {
   </div>
 </div>
 
+<script src="guard.js"></script>
 <script src="config.js"></script>
 <script>
 /* ========================================================
@@ -911,6 +934,48 @@ async function fetchMyAdminRow(email) {
   return rows[0] && rows[0].status === "active" ? rows[0] : null;
 }
 
+/* ---- التحقق بخطوتين: رمز على الإيميل بعد كلمة المرور (السيرفر يرفض البيانات قبل تأكيده) ---- */
+let pending2fa = null;
+async function fn2fa(name, body) {
+  const res = await fetch(`${SB}/functions/v1/${name}`, { method: "POST", headers: sbHeaders(), body: JSON.stringify(body || {}) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || "حدث خطأ، حاول مرة أخرى");
+  return data;
+}
+function finish2fa() {
+  sessionStorage.setItem("qs_sb_session", JSON.stringify(sbSession));
+  $("twoFaForm").style.display = "none";
+  doLoginSuccess(pending2fa);
+}
+async function send2fa() {
+  try {
+    const r = await fn2fa("admin-2fa-send");
+    if (r.verified) finish2fa();
+  } catch (err) { $("twoFaError").textContent = err.message; }
+}
+function begin2fa() {
+  $("passwordLoginForm").style.display = "none";
+  $("twoFaForm").style.display = "block";
+  $("twoFaError").textContent = "";
+  $("twoFaCode").value = "";
+  send2fa();
+  setTimeout(() => $("twoFaCode").focus(), 100);
+}
+$("twoFaForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("twoFaError").textContent = "";
+  try {
+    await fn2fa("admin-2fa-verify", { code: $("twoFaCode").value.trim() });
+    finish2fa();
+  } catch (err) { $("twoFaError").textContent = err.message; }
+});
+$("twoFaResend").addEventListener("click", e => { e.preventDefault(); $("twoFaError").textContent = ""; send2fa(); });
+$("twoFaCancel").addEventListener("click", async e => {
+  e.preventDefault();
+  try { await sb("/auth/v1/logout", { method: "POST" }); } catch (x) {}
+  sessionStorage.removeItem("qs_sb_session"); location.reload();
+});
+
 $("passwordLoginForm").addEventListener("submit", async e => {
   e.preventDefault();
   $("loginError").textContent = "";
@@ -926,8 +991,8 @@ $("passwordLoginForm").addEventListener("submit", async e => {
   sbSession = { access_token: d.access_token, refresh_token: d.refresh_token };
   const row = await fetchMyAdminRow(email);
   if (!row) { sbSession = null; $("loginError").textContent = "هذا الحساب غير مصرح له بدخول لوحة التحكم."; return; }
-  sessionStorage.setItem("qs_sb_session", JSON.stringify(sbSession));
-  doLoginSuccess(row);
+  pending2fa = row;
+  begin2fa();   // رمز تحقق على الإيميل قبل فتح اللوحة
 });
 
 function doLoginSuccess(adminObj) {
@@ -954,7 +1019,12 @@ function doLoginSuccess(adminObj) {
     if (!(await refreshSession())) { sbSession = null; sessionStorage.removeItem("qs_sb_session"); return; }
     const u = await (await fetch(`${SB}/auth/v1/user`, { headers: sbHeaders() })).json();
     const row = u && u.email ? await fetchMyAdminRow(u.email.toLowerCase()) : null;
-    if (row) doLoginSuccess(row);
+    if (!row) return;
+    pending2fa = row;
+    // هل أُكمل رمز الإيميل لهذه الجلسة؟ (السيرفر هو من يقرر)
+    const chk = await sb("/rest/v1/rpc/is_staff", { method: "POST", body: "{}" });
+    if (chk.ok && (await chk.json()) === true) doLoginSuccess(row);
+    else { $("loginSection").style.display = "block"; begin2fa(); }
   } catch (e) {}
 })();
 
@@ -996,9 +1066,11 @@ async function renderAdminsTable() {
         <td dir="ltr" style="text-align:right;">${escapeHtml(a.phone)}</td>
         <td><span class="role-badge ${roleInfo.css}">${roleInfo.label}</span></td>
         <td><span class="status-dot ${a.status}"></span><span>${a.status === 'active' ? 'نشط' : 'موقوف'}</span></td>
-        <td>${isSuper && !isCurrent ? `
-          <button type="button" class="btn-sm" onclick="toggleAdminStatus(${a.id}, '${a.status}')" style="padding:4px 8px;font-size:0.78rem;">${a.status === 'active' ? 'تعطيل' : 'تفعيل'}</button>
+        <td>${isSuper ? `
+          <button type="button" class="btn-sm" onclick="setAdminPassword('${escapeHtml(a.email)}')" style="padding:4px 8px;font-size:0.78rem;margin-left:4px;">كلمة المرور</button>
+          ${!isCurrent ? `          <button type="button" class="btn-sm" onclick="toggleAdminStatus(${a.id}, '${a.status}')" style="padding:4px 8px;font-size:0.78rem;">${a.status === 'active' ? 'تعطيل' : 'تفعيل'}</button>
           <button type="button" class="btn-sm" onclick="deleteAdminAccount(${a.id})" style="padding:4px 8px;font-size:0.78rem;color:var(--bad);border-color:var(--bad);margin-right:4px;">حذف</button>
+        ` : ''}
         ` : '<span style="font-size:0.8rem;color:var(--muted);">—</span>'}</td>
       </tr>`;
   }).join("");
@@ -1014,31 +1086,47 @@ $("openAddAdminModalBtn").addEventListener("click", () => {
 $("closeAddAdminModal").addEventListener("click", () => addAdminModal.classList.remove("open"));
 addAdminModal.addEventListener("click", e => { if (e.target === addAdminModal) addAdminModal.classList.remove("open"); });
 
-// يضيف صلاحية للإيميل. حساب الدخول نفسه (الإيميل وكلمة المرور) يُنشأ من Supabase > Authentication > Users
+// ينشئ حساب الدخول (إيميل + كلمة مرور) والصلاحية معاً عبر دالة admin-manage (للمدير العام فقط)
 $("newAdminForm").addEventListener("submit", async e => {
   e.preventDefault();
   $("newAdminError").textContent = "";
-  const row = {
+  const body = {
+    action: "create",
     name: $("newAdminName").value.trim(),
     email: $("newAdminEmail").value.trim().toLowerCase(),
+    password: $("newAdminPass").value,
     phone: $("newAdminPhone").value.trim().replace(/\s/g, ""),
-    role: $("newAdminRole").value,
-    status: "active"
+    role: $("newAdminRole").value
   };
-  const r = await sb("/rest/v1/admin_users", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(row) });
-  if (!r.ok) { $("newAdminError").textContent = r.status === 409 ? "البريد أو الجوال مسجل مسبقاً." : "تعذرت الإضافة (الصلاحية للمدير العام فقط)."; return; }
+  try {
+    await fn2fa("admin-manage", body);
+  } catch (err) { $("newAdminError").textContent = err.message; return; }
+  $("newAdminForm").reset();
   renderAdminsTable();
   addAdminModal.classList.remove("open");
-  alert(`تمت إضافة صلاحية "${row.name}". أنشئ له حساب دخول بنفس البريد من Supabase > Authentication > Users.`);
+  alert(`تم إنشاء حساب "${body.name}". يدخل من /admin بالإيميل وكلمة المرور، ثم يصله رمز على إيميله.`);
 });
+
+// تغيير كلمة مرور أدمن (المدير العام فقط)
+window.setAdminPassword = async function(email) {
+  const pw = prompt(`كلمة المرور الجديدة لـ ${email} (8 أحرف على الأقل):`);
+  if (pw === null) return;
+  if (pw.length < 8) { alert("كلمة المرور 8 أحرف على الأقل."); return; }
+  try { await fn2fa("admin-manage", { action: "set_password", email, password: pw }); alert("تم تغيير كلمة المرور."); }
+  catch (err) { alert(err.message); }
+};
 
 window.toggleAdminStatus = async function(id, current) {
   await sb(`/rest/v1/admin_users?id=eq.${id}`, { method: "PATCH", body: JSON.stringify({ status: current === "active" ? "suspended" : "active" }) });
   renderAdminsTable();
 };
 window.deleteAdminAccount = async function(id) {
-  if (!confirm("هل أنت متأكد من حذف هذا الحساب الإداري نهائياً؟")) return;
-  await sb(`/rest/v1/admin_users?id=eq.${id}`, { method: "DELETE" });
+  const r = await sb(`/rest/v1/admin_users?id=eq.${id}&select=email,name`);
+  const row = r.ok ? (await r.json())[0] : null;
+  if (!row) return;
+  if (!confirm(`حذف حساب "${row.name}" نهائياً؟ يُحذف حساب الدخول والصلاحية، وتبقى طلباته القديمة مسجلة.`)) return;
+  try { await fn2fa("admin-manage", { action: "delete", email: row.email }); }
+  catch (err) { alert(err.message); }
   renderAdminsTable();
 };
 
@@ -1189,6 +1277,7 @@ function renderBookingsList() {
           <button type="button" class="act-done" onclick="updateBookingStatus(${item.id}, 'done')">
             ⭐ تم الإنجاز
           </button>
+          ${currentAdminSession && currentAdminSession.role === 'super_admin' ? `<button type="button" class="act-cancel" onclick="deleteBooking(${item.id})">🗑 حذف نهائي</button>` : ''}
           <button type="button" class="act-cancel" onclick="updateBookingStatus(${item.id}, 'cancelled')">
             ✕ إلغاء
           </button>
@@ -1197,6 +1286,17 @@ function renderBookingsList() {
     `;
   }).join("");
 }
+
+// حذف طلب نهائياً (المدير العام فقط). تُحفظ نسخة منه في جدول deleted_bookings (من حذفه ومتى).
+window.deleteBooking = async function(id) {
+  const b = allBookingsCache.find(x => x.id === id);
+  if (!b) return;
+  if (!confirm(`حذف الطلب #${id} نهائياً؟\n${b.name} - ${b.date} ${b.slot}\nلا يمكن التراجع، وتُحفظ نسخة منه في سجل المحذوفات.`)) return;
+  const r = await sb(`/rest/v1/bookings?id=eq.${id}`, { method: "DELETE", headers: { Prefer: "return=representation" } });
+  const rows = r.ok ? await r.json().catch(() => []) : [];
+  if (!r.ok || !rows.length) { alert("تعذر الحذف: الحذف للمدير العام فقط، وتأكد من تشغيل ملف setup_v7_delete_bookings.sql في Supabase."); return; }
+  await loadBookings();
+};
 
 window.updateBookingStatus = async function(id, newStatus) {
   if (newStatus === "cancelled" && !confirm("هل أنت متأكد من إلغاء هذا الحجز؟")) return;

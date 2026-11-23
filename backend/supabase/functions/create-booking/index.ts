@@ -1,4 +1,4 @@
-import { admin, checkToken, cors, esc, json, normalizeEmail, normalizePhone, PKG_NAMES, PRICES, SIZE_NAMES, sendMail, validEmail } from "../_shared/util.ts";
+import { PKG_NAMES, PRICES, SIZE_NAMES, admin, cors, esc, json, normalizeEmail, normalizePhone, sendMail, validEmail } from "../_shared/util.ts";
 
 const PAY_NAMES: Record<string, string> = {
   cash: "الدفع عند الوصول (كاش/شبكة)", transfer: "تحويل بنكي", online: "دفع إلكتروني (Apple Pay / مدى / فيزا)",
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
   try {
     const b = await req.json();
     const email = normalizeEmail(b.email);
-    if (!validEmail(email) || !(await checkToken(b.token, email))) return json({ error: "البريد غير موثق، أعد التحقق" }, 401);
+    if (!validEmail(email)) return json({ error: "البريد الإلكتروني غير صحيح" }, 400);
     const phone = normalizePhone(b.phone);
     if (!phone) return json({ error: "رقم الجوال غير صحيح (يجب أن يبدأ بـ 05)" }, 400);
 
@@ -47,6 +47,13 @@ Deno.serve(async (req) => {
     if (new Date(b.date + "T23:59:59+03:00") < new Date()) return json({ error: "التاريخ منتهي" }, 400);
 
     const db = admin();
+    // التوثيق من قاعدة البيانات: آخر رمز مؤكَّد لنفس البريد خلال 15 دقيقة (يُستهلك عند نجاح الحجز)
+    const since = new Date(Date.now() - 15 * 60_000).toISOString();
+    const { data: otpRow } = await db.from("otp_verifications").select("id")
+      .eq("email", email).eq("verified", true).gte("created_at", since)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!otpRow) return json({ error: "البريد غير موثق، أعد التحقق" }, 401);
+
     // حد على الحجوزات المفتوحة لنفس الجوال والبريد (حماية من حجز كل المواعيد)
     const { count } = await db.from("bookings").select("id", { count: "exact", head: true })
       .or(`phone.eq.${phone},email.eq.${email}`).in("status", ["new", "confirmed"]).gte("date", new Date().toISOString().slice(0, 10));
@@ -64,6 +71,9 @@ Deno.serve(async (req) => {
       throw error;
     }
 
+    // استهلاك التوثيق: لحجز آخر يلزم رمز جديد
+    await db.from("otp_verifications").delete().eq("email", email).eq("verified", true);
+
     // الإيصال للعميل + تنبيه لصاحب المحل. فشل الإيميل لا يلغي الحجز.
     const full = { ...row, id: data.id };
     try {
@@ -72,7 +82,10 @@ Deno.serve(async (req) => {
       await sendMail(owner, `حجز جديد #${data.id} - ${name}`, receiptHtml(full, true));
     } catch (e) { console.error("mail failed", e); }
 
-    return json({ ok: true, id: data.id, price: data.price });
+    const bank = b.pay === "transfer"
+      ? { holder: Deno.env.get("BANK_HOLDER") ?? "", name: Deno.env.get("BANK_NAME") ?? "", iban: Deno.env.get("BANK_IBAN") ?? "" }
+      : undefined;
+    return json({ ok: true, id: data.id, price: data.price, bank });
   } catch (e) {
     console.error(e);
     return json({ error: "تعذر حفظ الحجز" }, 500);

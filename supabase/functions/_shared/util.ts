@@ -87,3 +87,22 @@ export const PRICES: Record<string, Record<string, number>> = {
 };
 export const PKG_NAMES: Record<string, string> = { regular: "باقة الغسيل العادي", deep: "باقة الغسيل العميق" };
 export const SIZE_NAMES: Record<string, string> = { small: "سيارة صغيرة", medium: "سيارة وسط", large: "سيارة كبيرة" };
+
+// يتحقق من توكن الأدمن (من تسجيل الدخول بكلمة المرور) ويرجع إيميله ومعرّف الجلسة
+export async function authAdmin(req: Request): Promise<{ email: string; sessionId: string } | null> {
+  const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
+  if (!token || token.split(".").length !== 3) return null;
+  const db = admin();
+  const { data, error } = await db.auth.getUser(token);   // يتحقق من توقيع التوكن عند Supabase
+  if (error || !data.user?.email) return null;
+  let sessionId = "";
+  try {
+    const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    sessionId = JSON.parse(atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4))).session_id ?? "";
+  } catch (_) { /* ignore */ }
+  if (!sessionId) return null;
+  const email = data.user.email.toLowerCase();
+  const { data: row } = await db.from("admin_users").select("status").eq("email", email).maybeSingle();
+  if (!row || row.status !== "active") return null;
+  return { email, sessionId };
+}
