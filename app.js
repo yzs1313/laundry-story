@@ -184,23 +184,28 @@ async function fetchTakenSlots() {
   if (!bookDate.value) return;
   const targetDate = bookDate.value;
   let taken = isDbConfigured ? [] : [...getLocalBookedSlots(targetDate)];
+  let counts = {};   // الساعة -> { n: عدد الحجوزات, cap: السعة }
 
   if (isDbConfigured) {
+    const hdr = {
+      apikey: CONFIG.supabaseKey,
+      ...(String(CONFIG.supabaseKey).startsWith("eyJ") ? { Authorization: `Bearer ${CONFIG.supabaseKey}` } : {}),
+      "Content-Type": "application/json"
+    };
     try {
-      const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/rpc/taken_slots`, {
-        method: "POST",
-        headers: {
-          apikey: CONFIG.supabaseKey,
-          ...(String(CONFIG.supabaseKey).startsWith("eyJ") ? { Authorization: `Bearer ${CONFIG.supabaseKey}` } : {}),
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ d: targetDate })
-      });
-      const dbTaken = await res.json();
-      if (Array.isArray(dbTaken)) {
-        dbTaken.forEach(s => { if (!taken.includes(s)) taken.push(s); });
-      }
-    } catch (err) {}
+      // الأفضل: عدد الحجوزات وسعة كل ساعة من السيرفر
+      const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/rpc/slot_counts`, { method: "POST", headers: hdr, body: JSON.stringify({ d: targetDate }) });
+      const rows = await res.json();
+      if (res.ok && Array.isArray(rows)) {
+        rows.forEach(r => { counts[r.slot] = { n: r.n, cap: r.cap }; if (r.n >= r.cap) taken.push(r.slot); });
+      } else { throw new Error("no slot_counts"); }
+    } catch (err) {
+      try {
+        const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/rpc/taken_slots`, { method: "POST", headers: hdr, body: JSON.stringify({ d: targetDate }) });
+        const dbTaken = await res.json();
+        if (Array.isArray(dbTaken)) dbTaken.forEach(s => { if (!taken.includes(s)) taken.push(s); });
+      } catch (e2) {}
+    }
   }
 
   document.querySelectorAll('input[name="timeSlot"]').forEach(inp => {
@@ -213,7 +218,9 @@ async function fetchTakenSlots() {
         label.innerHTML = `<span>${inp.value}</span><span class="slot-status-tag booked">محجوز ✕</span>`;
       } else {
         label.classList.remove("booked");
-        label.innerHTML = `<span>${inp.value}</span><span class="slot-status-tag available">متاح ✓</span>`;
+        const c = counts[inp.value];
+        const left = c ? c.cap - c.n : null;
+        label.innerHTML = `<span>${inp.value}</span><span class="slot-status-tag available">${left !== null && c.n > 0 ? `متبقي ${left} من ${c.cap}` : "متاح ✓"}</span>`;
       }
     }
     if (isTaken && inp.checked) inp.checked = false;
@@ -501,7 +508,7 @@ $("verifyAndConfirmBtn").addEventListener("click", async () => {
     // 1. التحقق من الرمز عبر Edge Function (verify-otp)
     const r = await callFn("verify-otp", { email: currentBookingData.email, code: enteredCode });
 
-    if (!r.valid && !r.success) {
+    if (!(r.ok || r.valid || r.success)) {
       throw new Error(r.error || "رمز التحقق غير صحيح");
     }
 
@@ -537,18 +544,8 @@ async function finalizeBookingProcess() {
     currentBookingId = r.id;
   } catch (err) {
     submitBtn.disabled = false;
-    // انتهت صلاحية توثيق البريد: نطلب رمزاً جديداً تلقائياً
-    if (/غير موثق|أعد التحقق/.test(err.message)) {
-      verifyToken = ""; verifiedEmail = "";
-      $("phoneVerifiedStatus").style.display = "none";
-      $("modalTargetPhone").textContent = d.email;
-      otpDigits.forEach(id => $(id).value = "");
-      otpModal.classList.add("open");
-      sendOtp();
-      return;
-    }
     fetchTakenSlots();
-    return showError(err.message);
+    return showError(err.message || "تعذر حفظ الحجز، يرجى المحاولة مرة أخرى.");
   }
   submitBtn.disabled = false;
 

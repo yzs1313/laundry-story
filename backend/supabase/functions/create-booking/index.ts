@@ -31,6 +31,23 @@ function normalizePhone(p: string): string | null {
 const normalizeEmail = (e: string) => String(e ?? "").trim().toLowerCase();
 const validEmail = (e: string) => e.length <= 120 && /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/.test(e);
 
+const enc = new TextEncoder();
+async function hmac(data: string) {
+  const secret = Deno.env.get("TOKEN_SECRET") || "";
+  if (!secret) return "";
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(data));
+  return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/[+/=]/g, "");
+}
+const encSub = (x: string) => encodeURIComponent(x).replace(/\./g, "%2E");
+async function checkToken(token: string, subject: string) {
+  const [p, exp, sig] = String(token ?? "").split(".");
+  if (!p || !exp || !sig || p !== encSub(subject) || Number(exp) < Date.now()) return false;
+  const expected = await hmac(`${p}.${exp}`);
+  return !!expected && sig === expected;
+}
+
 function formatSubject(s: string): string {
   const bytes = new TextEncoder().encode(s);
   let bin = "";
@@ -113,11 +130,19 @@ Deno.serve(async (req) => {
     if (new Date(b.date + "T23:59:59+03:00") < new Date()) return json({ error: "التاريخ منتهي" }, 400);
 
     const db = admin();
-    const since = new Date(Date.now() - 15 * 60_000).toISOString();
-    const { data: otpRow } = await db.from("otp_verifications").select("id")
-      .eq("email", email).eq("verified", true).gte("created_at", since)
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (!otpRow) return json({ error: "البريد غير موثق، أعد التحقق" }, 401);
+    let verified = false;
+    if (b.token && b.token !== "verified") {
+      try {
+        verified = await checkToken(b.token, email);
+      } catch (_) {}
+    }
+    if (!verified) {
+      const { data: otpRow } = await db.from("otp_verifications").select("id")
+        .eq("email", email).eq("verified", true)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (otpRow) verified = true;
+    }
+    if (!verified) return json({ error: "البريد غير موثق، أعد التحقق" }, 401);
 
     const { count } = await db.from("bookings").select("id", { count: "exact", head: true })
       .or(`phone.eq.${phone},email.eq.${email}`).in("status", ["new", "confirmed"]).gte("date", new Date().toISOString().slice(0, 10));

@@ -2759,15 +2759,19 @@ $("verifyAndConfirmBtn").addEventListener("click", async () => {
   const enteredCode = otpDigits.map(id => $(id).value).join("");
   if (enteredCode.length !== 6) { $("otpErrorAlert").textContent = "أدخل الرمز المكوّن من 6 أرقام."; return; }
   $("verifyAndConfirmBtn").disabled = true;
+  $("otpErrorAlert").textContent = "";
   try {
     const r = await callFn("verify-otp", { email: currentBookingData.email, code: enteredCode });
-    verifyToken = r.token;
+    if (!(r.ok || r.valid || r.success)) {
+      throw new Error(r.error || "رمز التحقق غير صحيح");
+    }
+    verifyToken = r.token || "verified";
     verifiedEmail = normEmail(currentBookingData.email);
     $("phoneVerifiedStatus").style.display = "inline";
     otpModal.classList.remove("open");
-    finalizeBookingProcess();
+    await finalizeBookingProcess();
   } catch (err) {
-    $("otpErrorAlert").textContent = err.message;
+    $("otpErrorAlert").textContent = err.message || "رمز التحقق غير صحيح أو انتهت صلاحيته";
   } finally {
     $("verifyAndConfirmBtn").disabled = false;
   }
@@ -2784,13 +2788,14 @@ async function finalizeBookingProcess() {
       pay: d.pay, lat: c.lat, lng: c.lng, loc: d.locationText
     });
     d.id = r.id;
+    d.bank = r.bank || null;
     d.price = r.price;          // السعر المعتمد من السيرفر
     d.phone_verified = true;
     currentBookingId = r.id;
   } catch (err) {
     submitBtn.disabled = false;
     fetchTakenSlots();
-    return showError(err.message);
+    return showError(err.message || "تعذر حفظ الحجز، يرجى المحاولة مرة أخرى.");
   }
   submitBtn.disabled = false;
 
