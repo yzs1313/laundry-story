@@ -454,6 +454,7 @@ function openOtpModal(email) {
 async function sendOtp() {
   if (otpSending) return;              // منع الإرسال المزدوج عند الضغط السريع
   otpSending = true;
+  otpDigits.forEach(id => $(id).value = "");
   $("resendOtpBtn").disabled = true;
   $("otpErrorAlert").textContent = "";
   try {
@@ -574,7 +575,7 @@ $("verifyAndConfirmBtn").addEventListener("click", async () => {
     if (!otpModal.classList.contains("open")) otpModal.classList.add("open");
     otpDigits.forEach(id => $(id).value = "");
     setTimeout(() => $("otp1").focus(), 50);
-    $("otpErrorAlert").textContent = err.message || "رمز التحقق غير صحيح أو انتهت صلاحيته";
+    showResendNow(err.message || "رمز التحقق غير صحيح أو انتهت صلاحيته");
   } finally {
     otpVerifying = false;
     $("verifyAndConfirmBtn").disabled = false;

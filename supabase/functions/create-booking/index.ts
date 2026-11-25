@@ -55,15 +55,6 @@ function formatSubject(s: string): string {
   return `=?UTF-8?B?${btoa(bin)}?=`;
 }
 
-function base64Utf8(s: string): string {
-  const bytes = new TextEncoder().encode(s);
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
-function foldBase64(s: string): string {
-  return (s.match(/.{1,76}/g) ?? []).join("\r\n");
-}
 function plainFromHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, "\n")
@@ -93,13 +84,13 @@ async function sendMail(to: string, subject: string, html: string) {
       mimeContent: [
         {
           mimeType: 'text/plain; charset="utf-8"',
-          content: foldBase64(base64Utf8(plainFromHtml(html))),
-          transferEncoding: "base64",
+          content: plainFromHtml(html),
+          transferEncoding: "8bit",
         },
         {
           mimeType: 'text/html; charset="utf-8"',
-          content: foldBase64(base64Utf8(html)),
-          transferEncoding: "base64",
+          content: html,
+          transferEncoding: "8bit",
         },
       ],
     });
@@ -130,13 +121,17 @@ function receiptHtml(b: any, forOwner: boolean) {
   const row = (k: string, v: string) => `<tr><td style="padding:6px 0;color:#6b7280">${k}</td><td style="padding:6px 0"><b>${v}</b></td></tr>`;
   return `<div dir="rtl" style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:20px;border:1px solid #e5e7eb;border-radius:12px">
     <h2 style="color:#0284c7;margin:0 0 4px">قصة الغسيل</h2>
-    <p style="margin:0 0 12px;color:#6b7280">${forOwner ? "حجز جديد" : "تأكيد الحجز وإيصال الطلب"} · رقم الحجز #${b.id}</p>
+    <p style="margin:0 0 12px;color:#6b7280">${forOwner ? "إشعار حجز جديد" : "فاتورة حجز"} · رقم الفاتورة INV-${b.id}</p>
     <table style="width:100%;border-collapse:collapse">
-      ${row("الاسم", esc(b.name))}${row("الجوال", esc(b.phone))}${row("السيارة", esc(b.car))}
-      ${row("الخدمة", esc(b.service))}${row("التاريخ", esc(b.date))}${row("الساعة", esc(b.slot))}
-      ${row("طريقة الدفع", esc(PAY_NAMES[b.pay]))}${row("الإجمالي", b.price + " ر.س")}
+      ${row("رقم الحجز", "#" + b.id)}${row("العميل", esc(b.name))}${row("الجوال", esc(b.phone))}
+      ${row("السيارة", esc(b.car))}${row("الخدمة / الوصف", esc(b.service))}
+      ${row("تاريخ الحجز", esc(b.date))}${row("الساعة", esc(b.slot))}
+      ${row("طريقة الدفع", esc(PAY_NAMES[b.pay]))}
       ${forOwner && b.loc_url ? row("الموقع", `<a href="${esc(b.loc_url)}">فتح الخريطة</a>`) : ""}
-    </table>${bank}
+    </table>
+    <div style="background:#f0f9ff;border-radius:8px;padding:12px;margin-top:12px;font-size:16px">
+      <b>الإجمالي المستحق: ${b.price} ر.س</b>
+    </div>${bank}
     <p style="color:#6b7280;font-size:12px;margin-top:14px">هذه فاتورة مبسطة لإيصال الحجز وليست فاتورة ضريبية رسمية. للاستفسار: واتساب 0533719216</p>
   </div>`;
 }

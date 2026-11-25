@@ -27,7 +27,7 @@ Deno.serve(async (req) => {
       const blocked = candidates.some(r => (r.attempts ?? 0) >= 5);
       return json({ ok: false, valid: false,
         error: blocked ? "محاولات كثيرة، اطلب رمزاً جديداً"
-                       : "رمز التحقق غير صحيح أو قديم، اطلب رمزاً جديداً وتأكد من نشر كل الدوال بنفس TOKEN_SECRET"
+                       : "رمز التحقق غير صحيح أو قديم، اطلب رمزاً جديداً"
       }, blocked ? 429 : 400);
     }
     await db.from("otp_verifications").update({ verified: true }).eq("id", match.id);

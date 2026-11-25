@@ -32,15 +32,6 @@ function formatSubject(s: string): string {
   return `=?UTF-8?B?${btoa(bin)}?=`;
 }
 
-function base64Utf8(s: string): string {
-  const bytes = new TextEncoder().encode(s);
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
-function foldBase64(s: string): string {
-  return (s.match(/.{1,76}/g) ?? []).join("\r\n");
-}
 function plainFromHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, "\n")
@@ -70,13 +61,13 @@ async function sendMail(to: string, subject: string, html: string) {
       mimeContent: [
         {
           mimeType: 'text/plain; charset="utf-8"',
-          content: foldBase64(base64Utf8(plainFromHtml(html))),
-          transferEncoding: "base64",
+          content: plainFromHtml(html),
+          transferEncoding: "8bit",
         },
         {
           mimeType: 'text/html; charset="utf-8"',
-          content: foldBase64(base64Utf8(html)),
-          transferEncoding: "base64",
+          content: html,
+          transferEncoding: "8bit",
         },
       ],
     });

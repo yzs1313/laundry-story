@@ -38,8 +38,10 @@ async function hmac(data: string) {
   const sig = await crypto.subtle.sign("HMAC", key, enc.encode(data));
   return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/[+/=]/g, "");
 }
+// تجزئة رمز OTP: لا تعتمد على TOKEN_SECRET حتى لا يحدث تعارض بين الدوال
+// عند تحديث السر أو نشر نسخ مختلفة. الجدول محمي بـ RLS ولا يمكن للعميل قراءته.
 export async function sha256(s: string) {
-  const h = await crypto.subtle.digest("SHA-256", enc.encode(s + tokenSecret()));
+  const h = await crypto.subtle.digest("SHA-256", enc.encode(s));
   return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 // توكن قصير العمر يثبت أن البريد تم التحقق منه
@@ -67,16 +69,6 @@ function formatSubject(s: string): string {
   return `=?UTF-8?B?${btoa(bin)}?=`;
 }
 
-// ترميز UTF-8 إلى Base64 مع طيّ الأسطر حسب RFC 2045
-function base64Utf8(s: string): string {
-  const bytes = new TextEncoder().encode(s);
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
-function foldBase64(s: string): string {
-  return (s.match(/.{1,76}/g) ?? []).join("\r\n");
-}
 function plainFromHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, "\n")
@@ -92,8 +84,8 @@ function plainFromHtml(html: string): string {
     .trim();
 }
 
-// إرسال الإيميل عبر Gmail بصيغة Base64 بدل quoted-printable
-// حتى لا تظهر الحروف العربية كـ =d9=82=... في بعض تطبيقات البريد
+// إرسال الإيميل عبر Gmail كنص UTF-8 مباشر (8bit) بدل quoted-printable/Base64
+// حتى تظهر الفاتورة عربية واضحة حتى عند عرض مصدر الرسالة
 export async function sendMail(to: string, subject: string, html: string) {
   const user = Deno.env.get("GMAIL_USER") ?? "";
   const pass = Deno.env.get("GMAIL_APP_PASSWORD") ?? "";
@@ -110,13 +102,13 @@ export async function sendMail(to: string, subject: string, html: string) {
       mimeContent: [
         {
           mimeType: 'text/plain; charset="utf-8"',
-          content: foldBase64(base64Utf8(plainFromHtml(html))),
-          transferEncoding: "base64",
+          content: plainFromHtml(html),
+          transferEncoding: "8bit",
         },
         {
           mimeType: 'text/html; charset="utf-8"',
-          content: foldBase64(base64Utf8(html)),
-          transferEncoding: "base64",
+          content: html,
+          transferEncoding: "8bit",
         },
       ],
     });
