@@ -2809,6 +2809,8 @@ $("verifyAndConfirmBtn").addEventListener("click", async () => {
   } catch (err) {
     clearOtpVerification();
     if (!otpModal.classList.contains("open")) otpModal.classList.add("open");
+    otpDigits.forEach(id => $(id).value = "");
+    setTimeout(() => $("otp1").focus(), 50);
     $("otpErrorAlert").textContent = err.message || "رمز التحقق غير صحيح أو انتهت صلاحيته";
   } finally {
     otpVerifying = false;

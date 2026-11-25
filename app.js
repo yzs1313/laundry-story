@@ -572,6 +572,8 @@ $("verifyAndConfirmBtn").addEventListener("click", async () => {
     // فشل التحقق نفسه: أبقِ النافذة مفتوحة وامسح الحالة حتى لا يتكرر الإرسال بنفس التوكن
     clearOtpVerification();
     if (!otpModal.classList.contains("open")) otpModal.classList.add("open");
+    otpDigits.forEach(id => $(id).value = "");
+    setTimeout(() => $("otp1").focus(), 50);
     $("otpErrorAlert").textContent = err.message || "رمز التحقق غير صحيح أو انتهت صلاحيته";
   } finally {
     otpVerifying = false;

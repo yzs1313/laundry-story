@@ -20,6 +20,8 @@ Deno.serve(async (req) => {
     if ((byIp.count ?? 0) >= 10) return json({ error: "محاولات كثيرة من نفس الجهاز، حاول لاحقاً" }, 429);
 
     const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000).padStart(6, "0");
+    // لا يبقى أكثر من رمز صالح للإيميل: أي رمز أقدم يُلغى عند إرسال رمز جديد
+    await db.from("otp_verifications").delete().eq("email", email).eq("verified", false);
     await db.from("otp_verifications").insert({
       email, ip, code_hash: await sha256(email + code),
       expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
