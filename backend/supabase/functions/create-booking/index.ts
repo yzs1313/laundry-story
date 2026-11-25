@@ -55,6 +55,30 @@ function formatSubject(s: string): string {
   return `=?UTF-8?B?${btoa(bin)}?=`;
 }
 
+function base64Utf8(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+function foldBase64(s: string): string {
+  return (s.match(/.{1,76}/g) ?? []).join("\r\n");
+}
+function plainFromHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|h2|h3|table)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 async function sendMail(to: string, subject: string, html: string) {
   const user = Deno.env.get("GMAIL_USER")!;
   const client = new SMTPClient({
@@ -66,7 +90,18 @@ async function sendMail(to: string, subject: string, html: string) {
       from: `"Laundry Story" <${user}>`,
       to,
       subject: formatSubject(subject),
-      html,
+      mimeContent: [
+        {
+          mimeType: 'text/plain; charset="utf-8"',
+          content: foldBase64(base64Utf8(plainFromHtml(html))),
+          transferEncoding: "base64",
+        },
+        {
+          mimeType: 'text/html; charset="utf-8"',
+          content: foldBase64(base64Utf8(html)),
+          transferEncoding: "base64",
+        },
+      ],
     });
   } finally {
     await client.close();
@@ -102,7 +137,7 @@ function receiptHtml(b: any, forOwner: boolean) {
       ${row("طريقة الدفع", esc(PAY_NAMES[b.pay]))}${row("الإجمالي", b.price + " ر.س")}
       ${forOwner && b.loc_url ? row("الموقع", `<a href="${esc(b.loc_url)}">فتح الخريطة</a>`) : ""}
     </table>${bank}
-    <p style="color:#6b7280;font-size:12px;margin-top:14px">هذا إيصال تأكيد حجز وليس فاتورة ضريبية. للاستفسار: واتساب 0533719216</p>
+    <p style="color:#6b7280;font-size:12px;margin-top:14px">هذه فاتورة مبسطة لإيصال الحجز وليست فاتورة ضريبية رسمية. للاستفسار: واتساب 0533719216</p>
   </div>`;
 }
 
@@ -166,7 +201,7 @@ Deno.serve(async (req) => {
 
     const full = { ...row, id: data.id };
     try {
-      await sendMail(email, `تأكيد حجزك #${data.id} - قصة الغسيل`, receiptHtml(full, false));
+      await sendMail(email, `فاتورة/إيصال حجزك #${data.id} - قصة الغسيل`, receiptHtml(full, false));
       const owner = Deno.env.get("OWNER_EMAIL") ?? Deno.env.get("GMAIL_USER")!;
       await sendMail(owner, `حجز جديد #${data.id} - ${name}`, receiptHtml(full, true));
     } catch (e) { console.error("mail failed", e); }

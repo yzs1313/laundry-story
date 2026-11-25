@@ -32,6 +32,30 @@ function formatSubject(s: string): string {
   return `=?UTF-8?B?${btoa(bin)}?=`;
 }
 
+function base64Utf8(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin);
+}
+function foldBase64(s: string): string {
+  return (s.match(/.{1,76}/g) ?? []).join("\r\n");
+}
+function plainFromHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|h2|h3|table)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 async function sendMail(to: string, subject: string, html: string) {
   const user = Deno.env.get("GMAIL_USER")!;
   const client = new SMTPClient({
@@ -43,7 +67,18 @@ async function sendMail(to: string, subject: string, html: string) {
       from: `"Laundry Story" <${user}>`,
       to,
       subject: formatSubject(subject),
-      html,
+      mimeContent: [
+        {
+          mimeType: 'text/plain; charset="utf-8"',
+          content: foldBase64(base64Utf8(plainFromHtml(html))),
+          transferEncoding: "base64",
+        },
+        {
+          mimeType: 'text/html; charset="utf-8"',
+          content: foldBase64(base64Utf8(html)),
+          transferEncoding: "base64",
+        },
+      ],
     });
   } finally {
     await client.close();
