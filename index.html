@@ -792,7 +792,7 @@
     <h3 style="font-size:1.35rem;font-weight:900;margin-bottom:6px;">سيصلك رمز التحقق على بريدك الإلكتروني</h3>
     <p style="font-size:0.86rem;color:var(--text-muted);margin-bottom:14px;">
       لضمان جدية الموعد ومنع إدخال بيانات غير صحيحة، أرسلنا رمز تحقق من 6 أرقام إلى بريدك الإلكتروني (تفقد البريد المزعج Spam إذا لم يصل):
-      <br><b id="modalTargetPhone" style="color:var(--primary);font-size:1rem;display:inline-block;margin-top:4px;">0533719216</b>
+      <br><b id="modalTargetPhone" style="color:var(--primary);font-size:1rem;display:inline-block;margin-top:4px;direction:ltr;">بريدك الإلكتروني</b>
     </p>
 
     <!-- 6-digit code boxes -->
@@ -810,7 +810,7 @@
     </button>
 
     <div style="margin-top:14px;font-size:0.82rem;color:var(--text-muted);display:flex;justify-content:center;gap:12px;align-items:center;">
-      <span id="otpCountdown">إعادة إرسال خلال 59 ثانية</span>
+      <span id="otpCountdown" style="display:none;"></span>
       <button type="button" id="resendOtpBtn" style="display:none;background:none;border:none;color:var(--primary);font-weight:800;cursor:pointer;font-family:inherit;">إعادة إرسال الرمز ⟳</button>
     </div>
     <div id="otpErrorAlert" style="color:#ef4444;font-size:0.82rem;font-weight:700;margin-top:10px;"></div>

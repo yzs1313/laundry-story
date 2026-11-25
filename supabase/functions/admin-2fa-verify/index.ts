@@ -48,21 +48,18 @@ Deno.serve(async (req) => {
     if (!/^\d{6}$/.test(String(code))) return json({ error: "الرمز يتكون من 6 أرقام" }, 400);
 
     const db = admin();
-    let { data: row } = await db.from("admin_2fa").select("*").eq("session_id", me.sessionId).maybeSingle();
-    if (!row) {
-      const { data: byEmail } = await db.from("admin_2fa").select("*").eq("email", me.email).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      row = byEmail;
-    }
+    // الرمز مرتبط بهذه الجلسة فقط؛ لا قبول بأي رمز من جلسة أخرى أو إيميل آخر.
+    const { data: row } = await db.from("admin_2fa").select("*").eq("session_id", me.sessionId).maybeSingle();
     if (!row || !row.code_hash || !row.code_expires_at || new Date(row.code_expires_at) < new Date())
       return json({ error: "انتهت صلاحية الرمز، اطلب رمزاً جديداً" }, 400);
     if (row.attempts >= 5) return json({ error: "محاولات كثيرة، اطلب رمزاً جديداً" }, 429);
 
-    const validHash = (row.code_hash === await sha256(row.session_id + code)) || (row.code_hash === await sha256(me.sessionId + code));
+    const validHash = row.code_hash === await sha256(row.session_id + code);
     if (!validHash) {
       await db.from("admin_2fa").update({ attempts: row.attempts + 1 }).eq("session_id", row.session_id);
       return json({ error: "رمز التحقق غير صحيح" }, 400);
     }
-    await db.from("admin_2fa").update({ session_id: me.sessionId, verified_at: new Date().toISOString(), code_hash: null }).eq("session_id", row.session_id);
+    await db.from("admin_2fa").update({ verified_at: new Date().toISOString(), code_hash: null }).eq("session_id", row.session_id);
     return json({ ok: true });
   } catch (e) {
     console.error(e);

@@ -4,12 +4,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
 export const admin = () =>
   createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-const rawOrigin = Deno.env.get("ALLOWED_ORIGIN") ?? "*";
-const ALLOWED = rawOrigin === "*" ? "*" : rawOrigin.trim().replace(/\/+$/, "");
+const rawOrigins = (Deno.env.get("ALLOWED_ORIGIN") ?? "*").split(",").map(s => s.trim().replace(/\/+$/, "")).filter(Boolean);
+const ALLOWED = (rawOrigins.length === 0 || rawOrigins.includes("*")) ? "*" : rawOrigins[0];
 export const cors = {
   "Access-Control-Allow-Origin": ALLOWED,
   "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Vary": "Origin",
   "Content-Type": "application/json",
 };
 export const json = (b: unknown, status = 200) =>
@@ -26,19 +27,24 @@ export function normalizePhone(p: string): string | null {
 }
 
 const enc = new TextEncoder();
+function tokenSecret(): string {
+  const s = Deno.env.get("TOKEN_SECRET") ?? "";
+  if (s.length < 16) throw new Error("TOKEN_SECRET is missing or too short");
+  return s;
+}
 async function hmac(data: string) {
-  const key = await crypto.subtle.importKey("raw", enc.encode(Deno.env.get("TOKEN_SECRET")!),
+  const key = await crypto.subtle.importKey("raw", enc.encode(tokenSecret()),
     { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", key, enc.encode(data));
   return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/[+/=]/g, "");
 }
 export async function sha256(s: string) {
-  const h = await crypto.subtle.digest("SHA-256", enc.encode(s + Deno.env.get("TOKEN_SECRET")));
+  const h = await crypto.subtle.digest("SHA-256", enc.encode(s + tokenSecret()));
   return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 // توكن قصير العمر يثبت أن البريد تم التحقق منه
 const encSub = (x: string) => encodeURIComponent(x).replace(/\./g, "%2E");
-export async function signToken(subject: string, ttlMs = 15 * 60_000) {
+export async function signToken(subject: string, ttlMs = 30 * 60_000) {
   const body = `${encSub(subject)}.${Date.now() + ttlMs}`;
   return `${body}.${await hmac(body)}`;
 }
@@ -63,10 +69,12 @@ function formatSubject(s: string): string {
 
 // إرسال الإيميل عبر Gmail بتنسيق HTML نظيف ومضبوط
 export async function sendMail(to: string, subject: string, html: string) {
-  const user = Deno.env.get("GMAIL_USER")!;
+  const user = Deno.env.get("GMAIL_USER") ?? "";
+  const pass = Deno.env.get("GMAIL_APP_PASSWORD") ?? "";
+  if (!user || !pass) throw new Error("GMAIL_USER / GMAIL_APP_PASSWORD are missing");
   const client = new SMTPClient({
     connection: { hostname: "smtp.gmail.com", port: 465, tls: true,
-      auth: { username: user, password: Deno.env.get("GMAIL_APP_PASSWORD")! } },
+      auth: { username: user, password: pass } },
   });
   try {
     await client.send({

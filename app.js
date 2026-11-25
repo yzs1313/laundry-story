@@ -5,7 +5,8 @@ const CONFIG = {
   brandName: "قصة الغسيل",
   whatsapp: "966533719216",
   phoneDisplay: "0533719216",
-  // --- الدفع بالتحويل البنكي (عبّئ بياناتك الحقيقية) ---
+  // --- الدفع بالتحويل البنكي (عبّئ بياناتك من SITE_CONFIG في config.js) ---
+  bank: (window.SITE_CONFIG||{}).bank || { holder: "", name: "", iban: "" },
   // --- Moyasar: المفتاح العام فقط (pk_live_...) - لا تضع المفتاح السري هنا أبداً ---
   moyasarPublishableKey: (window.SITE_CONFIG||{}).moyasarPublishableKey || "",
   currency: "ر.س",
@@ -88,6 +89,7 @@ const recTotal = $("recTotal");
 let currentCoordinates = null;
 let currentBookingData = null;
 let otpTimerInterval = null;
+let slotsRequestId = 0;
 
 /* إعداد التاريخ */
 const today = new Date();
@@ -183,6 +185,7 @@ const isDbConfigured = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);
 async function fetchTakenSlots() {
   if (!bookDate.value) return;
   const targetDate = bookDate.value;
+  const reqId = ++slotsRequestId;   // تجاهل الردود القديمة عند تغيير التاريخ بسرعة
   let taken = isDbConfigured ? [] : [...getLocalBookedSlots(targetDate)];
   let counts = {};   // الساعة -> { n: عدد الحجوزات, cap: السعة }
 
@@ -208,6 +211,7 @@ async function fetchTakenSlots() {
     }
   }
 
+  if (reqId !== slotsRequestId || bookDate.value !== targetDate) return;
   document.querySelectorAll('input[name="timeSlot"]').forEach(inp => {
     const isTaken = taken.includes(inp.value);
     inp.disabled = isTaken;
@@ -360,6 +364,9 @@ const otpDigits = ["otp1", "otp2", "otp3", "otp4", "otp5", "otp6"];
 let verifiedEmail = "";
 let verifyToken = "";
 let currentBookingId = null;
+let otpSending = false;
+let otpVerifying = false;
+let bookingInFlight = false;
 
 const fnUrl = name => `${CONFIG.supabaseUrl}/functions/v1/${name}`;
 async function callFn(name, body) {
@@ -369,7 +376,12 @@ async function callFn(name, body) {
     body: JSON.stringify(body)
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "حدث خطأ، حاول مرة أخرى");
+  if (!res.ok) {
+    const err = new Error(data.error || "حدث خطأ، حاول مرة أخرى");
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
   return data;
 }
 const normEmail = e => String(e).trim().toLowerCase();
@@ -391,45 +403,87 @@ $("otp1").addEventListener("paste", e => {
 });
 $("otp1").setAttribute("autocomplete", "one-time-code");
 
+function clearOtpVerification() {
+  verifiedEmail = "";
+  verifyToken = "";
+  $("phoneVerifiedStatus").style.display = "none";
+}
+
+function showResendNow(msg) {
+  clearInterval(otpTimerInterval);
+  $("otpCountdown").style.display = "none";
+  $("resendOtpBtn").style.display = "inline";
+  $("resendOtpBtn").disabled = false;
+  if (msg) $("otpErrorAlert").textContent = msg;
+}
+
 function startOtpTimer() {
   let timeLeft = 60;
-  $("otpCountdown").style.display = "inline";
-  $("resendOtpBtn").style.display = "none";
   clearInterval(otpTimerInterval);
+  $("otpErrorAlert").textContent = "";
+  $("otpCountdown").style.display = "inline";
+  $("otpCountdown").textContent = `إعادة إرسال خلال ${timeLeft} ثانية`;
+  $("resendOtpBtn").style.display = "none";
+  $("resendOtpBtn").disabled = true;
   otpTimerInterval = setInterval(() => {
     timeLeft--;
+    if (timeLeft <= 0) { showResendNow(); return; }
     $("otpCountdown").textContent = `إعادة إرسال خلال ${timeLeft} ثانية`;
-    if (timeLeft <= 0) {
-      clearInterval(otpTimerInterval);
-      $("otpCountdown").style.display = "none";
-      $("resendOtpBtn").style.display = "inline";
-    }
   }, 1000);
 }
 
+function resetOtpModal(clearVerification = true) {
+  clearInterval(otpTimerInterval);
+  otpDigits.forEach(id => $(id).value = "");
+  $("otpErrorAlert").textContent = "";
+  $("otpCountdown").style.display = "none";
+  $("resendOtpBtn").style.display = "inline";
+  $("resendOtpBtn").disabled = false;
+  $("verifyAndConfirmBtn").disabled = false;
+  if (clearVerification) clearOtpVerification();
+}
+
+function openOtpModal(email) {
+  resetOtpModal(true);
+  $("modalTargetPhone").textContent = email || "بريدك الإلكتروني";
+  otpModal.classList.add("open");
+  sendOtp();
+  setTimeout(() => $("otp1").focus(), 150);
+}
+
 async function sendOtp() {
+  if (otpSending) return;              // منع الإرسال المزدوج عند الضغط السريع
+  otpSending = true;
+  $("resendOtpBtn").disabled = true;
   $("otpErrorAlert").textContent = "";
   try {
+    if (!currentBookingData || !currentBookingData.email) throw new Error("أدخل بريداً إلكترونياً صحيحاً أولاً.");
     await callFn("send-otp", { email: currentBookingData.email });
     startOtpTimer();
   } catch (err) {
-    $("otpErrorAlert").textContent = err.message;
+    const msg = err.status === 429
+      ? "محاولات كثيرة، انتظر قليلاً ثم اضغط إعادة الإرسال."
+      : (err.message || "تعذر إرسال الرمز، حاول مرة أخرى.");
+    showResendNow(msg);
+  } finally {
+    otpSending = false;
   }
 }
 
 $("resendOtpBtn").addEventListener("click", sendOtp);
-$("closeOtpModal").addEventListener("click", () => otpModal.classList.remove("open"));
+$("closeOtpModal").addEventListener("click", () => {
+  otpModal.classList.remove("open");
+  resetOtpModal(true);
+});
 // إذا غيّر العميل بريده بعد التوثيق نطلب توثيقاً جديداً
 $("custEmail").addEventListener("input", () => {
-  if (normEmail($("custEmail").value) !== verifiedEmail) {
-    verifiedEmail = ""; verifyToken = "";
-    $("phoneVerifiedStatus").style.display = "none";
-  }
+  if (normEmail($("custEmail").value) !== verifiedEmail) clearOtpVerification();
 });
 
 /* إرسال الفورم وطلب التحقق من البريد وحفظ الحجز */
 form.addEventListener("submit", async e => {
   e.preventDefault();
+  if (bookingInFlight) return;          // لا حجزين بنفس الضغط
   errorMsg.style.display = "none";
   errorMsg.textContent = "";
 
@@ -463,6 +517,7 @@ form.addEventListener("submit", async e => {
     email: email,
     car: car || "غير محدد",
     packageKey: pkgKey,
+    sizeKey,
     packageName: pkgObj.name,
     carSizeName: sizeObj.title,
     serviceTitle: `${pkgObj.name} - ${sizeObj.title}`,
@@ -481,11 +536,7 @@ form.addEventListener("submit", async e => {
 
   // إذا لم يتم توثيق البريد بعد، أرسل الرمز وافتح نافذة الـ OTP
   if (!(verifyToken && verifiedEmail === normEmail(email))) {
-    $("modalTargetPhone").textContent = email;
-    otpDigits.forEach(id => $(id).value = "");
-    otpModal.classList.add("open");
-    sendOtp();
-    setTimeout(() => $("otp1").focus(), 150);
+    openOtpModal(email);
     return;
   }
 
@@ -495,46 +546,49 @@ form.addEventListener("submit", async e => {
 
 // تأكيد رمز التحقق المدخل وإرساله لدالة verify-otp ثم الحجز المباشر
 $("verifyAndConfirmBtn").addEventListener("click", async () => {
+  if (otpVerifying || bookingInFlight) return;
   const enteredCode = otpDigits.map(id => $(id).value).join("");
   if (enteredCode.length !== 6) {
     $("otpErrorAlert").textContent = "أدخل الرمز المكوّن من 6 أرقام.";
     return;
   }
 
+  otpVerifying = true;
   $("verifyAndConfirmBtn").disabled = true;
   $("otpErrorAlert").textContent = "";
 
   try {
-    // 1. التحقق من الرمز عبر Edge Function (verify-otp)
     const r = await callFn("verify-otp", { email: currentBookingData.email, code: enteredCode });
-
-    if (!(r.ok || r.valid || r.success)) {
+    if (!r.token || !(r.ok || r.valid || r.success)) {
       throw new Error(r.error || "رمز التحقق غير صحيح");
     }
-
-    verifyToken = r.token || "verified";
+    verifyToken = r.token;                       // توكن موقّع من السيرفر فقط
     verifiedEmail = normEmail(currentBookingData.email);
     $("phoneVerifiedStatus").style.display = "inline";
     otpModal.classList.remove("open");
-
-    // 2. بعد نجاح التحقق فوراً، نقوم بتثبيت الحجز وإرساله إلى (create-booking)
+    clearInterval(otpTimerInterval);
     await finalizeBookingProcess();
-
   } catch (err) {
+    // فشل التحقق نفسه: أبقِ النافذة مفتوحة وامسح الحالة حتى لا يتكرر الإرسال بنفس التوكن
+    clearOtpVerification();
+    if (!otpModal.classList.contains("open")) otpModal.classList.add("open");
     $("otpErrorAlert").textContent = err.message || "رمز التحقق غير صحيح أو انتهت صلاحيته";
   } finally {
+    otpVerifying = false;
     $("verifyAndConfirmBtn").disabled = false;
   }
 });
 
 async function finalizeBookingProcess() {
+  if (bookingInFlight) return false;
   const d = currentBookingData;
+  bookingInFlight = true;
   submitBtn.disabled = true;
   try {
     const c = d.coords || CONFIG.area;
     const r = await callFn("create-booking", {
       token: verifyToken, phone: d.phone, name: d.name, email: d.email,
-      car: d.car, pkg: d.packageKey, size: getSelectedCarSize(), date: d.date, slot: d.slot,
+      car: d.car, pkg: d.packageKey, size: d.sizeKey || getSelectedCarSize(), date: d.date, slot: d.slot,
       pay: d.pay, lat: c.lat, lng: c.lng, loc: d.locationText
     });
     d.id = r.id;
@@ -543,11 +597,19 @@ async function finalizeBookingProcess() {
     d.phone_verified = true;
     currentBookingId = r.id;
   } catch (err) {
-    submitBtn.disabled = false;
+    const needOtp = err.status === 401 || /موثق|التحقق|توكن|verified/i.test(err.message || "");
+    clearOtpVerification();
+    showError(err.message || "تعذر حفظ الحجز، يرجى المحاولة مرة أخرى.");
     fetchTakenSlots();
-    return showError(err.message || "تعذر حفظ الحجز، يرجى المحاولة مرة أخرى.");
+    if (needOtp && d && d.email) setTimeout(() => openOtpModal(d.email), 120);
+    return false;
+  } finally {
+    bookingInFlight = false;
+    submitBtn.disabled = false;
   }
-  submitBtn.disabled = false;
+
+  // نجاح الحجز: لا تُعد حالة التحقق مستخدمَة في محاولة تالية
+  clearOtpVerification();
 
   saveLocalSlot(d.date, d.slot, d.name);
   try {
@@ -559,6 +621,7 @@ async function finalizeBookingProcess() {
 
   fetchTakenSlots();
   showSuccessScreen(d);
+  return true;
 }
 
 function showError(msg) {
@@ -810,27 +873,10 @@ const trackModal = $("trackModal");
 $("openTrackModalBtn").addEventListener("click", () => trackModal.classList.add("open"));
 $("closeTrackModal").addEventListener("click", () => trackModal.classList.remove("open"));
 
-$("searchMyBookingsBtn").addEventListener("click", () => {
+$("searchMyBookingsBtn").addEventListener("click", async () => {
   const phone = $("trackPhoneInput").value.trim().replace(/\D/g, "");
   if (!phone || phone.length < 9) {
     alert("يرجى إدخال رقم جوالك كاملاً.");
-    return;
-  }
-
-  let all = [];
-  try {
-    const raw = localStorage.getItem("qs_local_bookings_master");
-    if (raw) all = JSON.parse(raw);
-  } catch (e) {}
-
-  const myBookings = all.filter(b => String(b.phone || "").replace(/\D/g, "").includes(phone.slice(-9)));
-
-  if (!myBookings.length) {
-    $("myBookingsResultBox").innerHTML = `
-      <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:0.9rem;">
-        لا توجد حجوزات مسجلة بهذا الرقم حالياً.
-      </div>
-    `;
     return;
   }
 
@@ -842,19 +888,60 @@ $("searchMyBookingsBtn").addEventListener("click", () => {
     cancelled: { label: "ملغي", color: "#ef4444" }
   };
 
-  $("myBookingsResultBox").innerHTML = myBookings.map(b => {
+  // الحالة الحقيقية من قاعدة البيانات (وليس من نسخة المتصفح فقط)
+  let rows = [];
+  if (isDbConfigured) {
+    try {
+      const hdr = {
+        apikey: CONFIG.supabaseKey,
+        "Content-Type": "application/json",
+        ...(String(CONFIG.supabaseKey).startsWith("eyJ") ? { Authorization: `Bearer ${CONFIG.supabaseKey}` } : {})
+      };
+      const res = await fetch(`${CONFIG.supabaseUrl}/rest/v1/rpc/lookup_my_bookings`, {
+        method: "POST", headers: hdr, body: JSON.stringify({ p_phone: phone })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) rows = data;
+      }
+    } catch (e) {}
+  }
+
+  if (!rows.length) {
+    let all = [];
+    try {
+      const raw = localStorage.getItem("qs_local_bookings_master");
+      if (raw) all = JSON.parse(raw);
+    } catch (e) {}
+    rows = all.filter(b => String(b.phone || "").replace(/\D/g, "").includes(phone.slice(-9)))
+      .map(b => ({
+        service: b.serviceTitle || b.packageName || "غسيل سيارة", price: b.price,
+        date: b.date, dateArabic: b.dateArabic, slot: b.slot, car: b.car, status: b.status
+      }));
+  }
+
+  if (!rows.length) {
+    $("myBookingsResultBox").innerHTML = `
+      <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:0.9rem;">
+        لا توجد حجوزات مسجلة بهذا الرقم حالياً.
+      </div>
+    `;
+    return;
+  }
+
+  $("myBookingsResultBox").innerHTML = rows.map(b => {
     const st = statusTags[b.status] || statusTags.new;
     return `
       <div style="background:var(--page-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px;margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <b style="color:var(--primary);font-size:0.95rem;">${escapeHtml(b.serviceTitle || b.packageName || 'غسيل سيارة')}</b>
+          <b style="color:var(--primary);font-size:0.95rem;">${escapeHtml(b.service || 'غسيل سيارة')}</b>
           <span style="font-size:0.75rem;font-weight:800;color:#fff;background:${st.color};padding:2px 8px;border-radius:999px;">${st.label}</span>
         </div>
         <div style="font-size:0.85rem;color:var(--text-muted);">
-          الموعد: <b>${escapeHtml(b.dateArabic || b.date)} · ${escapeHtml(b.slot)}</b>
+          الموعد: <b>${escapeHtml(b.dateArabic || getArabicDayName(b.date) || b.date || '—')} · ${escapeHtml(b.slot || '')}</b>
         </div>
         <div style="font-size:0.85rem;color:var(--text-muted);">
-          السيارة: <b>${escapeHtml(b.car || '—')}</b> · المبلغ: <b>${b.price} ر.س</b>
+          السيارة: <b>${escapeHtml(b.car || '—')}</b> · المبلغ: <b>${b.price ?? '—'} ر.س</b>
         </div>
       </div>
     `;

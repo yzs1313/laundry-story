@@ -21,11 +21,14 @@ Deno.serve(async (req) => {
       return json({ ok: false, valid: false, error: "رمز التحقق غير صحيح" }, 400);
     }
     await db.from("otp_verifications").update({ verified: true }).eq("id", row.id);
-    let token = "verified";
+    // توكن موقّع حقيقي فقط؛ لا يوجد مسار بديل "verified" يمكن تزويره من المتصفح.
     try {
-      token = await signToken(email);
-    } catch (_) {}
-    return json({ ok: true, valid: true, success: true, token });
+      const token = await signToken(email);
+      return json({ ok: true, valid: true, success: true, token });
+    } catch (e) {
+      console.error("signing failed", e);
+      return json({ ok: false, error: "تعذر إكمال التحقق، تأكد من إعدادات السيرفر (TOKEN_SECRET)" }, 500);
+    }
   } catch (e) {
     console.error(e);
     return json({ ok: false, valid: false, error: "خطأ في التحقق" }, 500);

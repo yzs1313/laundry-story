@@ -131,14 +131,16 @@ Deno.serve(async (req) => {
 
     const db = admin();
     let verified = false;
-    if (b.token && b.token !== "verified") {
+    if (b.token) {
       try {
         verified = await checkToken(b.token, email);
       } catch (_) {}
     }
     if (!verified) {
+      // مسار احتياطي محدود: صف تحقق حقيقي وحديث فقط (لا توكن وهمي ولا صف قديم)
+      const since = new Date(Date.now() - 30 * 60_000).toISOString();
       const { data: otpRow } = await db.from("otp_verifications").select("id")
-        .eq("email", email).eq("verified", true)
+        .eq("email", email).eq("verified", true).gte("created_at", since)
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (otpRow) verified = true;
     }

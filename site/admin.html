@@ -1465,6 +1465,14 @@ async function saveWorkingHoursAdmin() {
         updated_at: new Date().toISOString()
       })
     });
+    if (!r.ok) {
+      let detail = `تعذر الحفظ من قاعدة البيانات (${r.status})`;
+      try {
+        const e = await r.json();
+        detail = e.message || e.error || detail;
+      } catch (_) {}
+      throw new Error(detail);
+    }
 
     localStorage.setItem("ls_working_hours", JSON.stringify(currentWorkingSlots));
     CONFIG.slots = [...currentWorkingSlots];

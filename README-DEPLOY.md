@@ -1,33 +1,22 @@
-# قصة الغسيل - دليل التشغيل (بالترتيب)
+# قصة الغسيل - نشر سريع (قائمة تحقق)
 
-المجلدان: `site/` يُرفع على Netlify، و`backend/` للسيرفر (Supabase) ولا يُرفع للموقع.
+1. Supabase > SQL Editor: شغّل `backend/sql/setup.sql` ثم `backend/sql/update_all.sql`.
+2. Authentication: عطّل التسجيل الحر، وأنشئ مستخدمك، ثم أضف إيميلك في `admin_users` بدور `super_admin`.
+3. Secrets:
+   - `GMAIL_USER`, `GMAIL_APP_PASSWORD` (كلمة مرور تطبيق من Google)
+   - `TOKEN_SECRET` (نص عشوائي طويل)
+   - `ALLOWED_ORIGIN` = رابط الموقع الحقيقي بدون `/` في النهاية
+   - `BANK_HOLDER`, `BANK_NAME`, `BANK_IBAN`
+   - `MOYASAR_SECRET_KEY` اختياري للدفع الإلكتروني
+4. انشر كل الدوال من مجلد واحد فقط:
+   ```
+   cd supabase
+   supabase functions deploy send-otp verify-otp create-booking confirm-payment admin-2fa-send admin-2fa-verify admin-manage --no-verify-jwt
+   ```
+5. عدّل `config.js` (الجذر) ثم انسخه إلى `site/`. تأكد أن `site/` يحتوي `app.js` و`style.css` و`guard.js`.
+6. ارفع محتوى `site/` على Netlify/Vercel. جرّب حجزاً كاملاً: وصول الرمز → تأكيد → ظهور شاشة النجاح → ظهور الحجز في `/admin`.
 
-## 1) Supabase (قاعدة البيانات والدخول)
-1. أنشئ مشروعاً على supabase.com.
-2. SQL Editor: شغّل `backend/sql/setup.sql` ثم `backend/sql/setup_v2_security.sql`.
-3. Authentication > Providers > Email: **عطّل Enable sign ups** (مهم حتى لا يسجل غرباء).
-4. Authentication > Users > Add user: أنشئ حسابك (إيميل + كلمة مرور قوية).
-5. SQL Editor: شغّل سطر إضافة المدير العام (آخر سطر في setup_v2_security.sql) بنفس إيميلك.
-6. Project Settings > API: انسخ Project URL و anon public key إلى `site/config.js`.
-
-## 2) الرسائل SMS
-سجّل في Taqnyat (أو Unifonic/Msegat) واحصل على API key واسم مرسل معتمد.
-
-## 3) نشر دوال السيرفر
-```
-npm i -g supabase
-supabase login
-supabase link --project-ref YOUR_REF
-supabase secrets set SMS_API_KEY=... SMS_SENDER=... TOKEN_SECRET=$(openssl rand -hex 32) \
-  MOYASAR_SECRET_KEY=sk_live_... ALLOWED_ORIGIN=https://موقعك.com
-cd backend && supabase functions deploy send-otp verify-otp create-booking confirm-payment --no-verify-jwt
-```
-
-## 4) الدفع
-- التحويل البنكي: عدّل `bank` في `site/config.js`.
-- Moyasar: ضع `pk_live_...` في `site/config.js`. لـ Apple Pay: أضف دومينك في لوحة Moyasar وارفع ملف التحقق إلى
-  `site/.well-known/apple-developer-merchantid-domain-association.txt` ثم اضغط Verify.
-- جرّب أولاً بمفاتيح الاختبار (pk_test / sk_test).
-
-## 5) الرفع
-ارفع محتوى مجلد `site/` على Netlify (سحب وإفلات). لوحة الأدمن: `/admin`.
+استكشاف سريع لمشكلة "التحقق معلق":
+- الرمز لا يصل؟ تحقق من `GMAIL_USER`/`GMAIL_APP_PASSWORD` وصندوق Spam.
+- رسالة CORS/فشل فوري؟ تحقق من `ALLOWED_ORIGIN` ومن نشر الدوال بـ `--no-verify-jwt`.
+- الحجز ي fail بعد التحقق؟ تأكد أن كل الدوال تستخدم نفس `TOKEN_SECRET` وأن `update_all.sql` مطبّق.
