@@ -31,6 +31,40 @@ function normalizePhone(p: string): string | null {
 const normalizeEmail = (e: string) => String(e ?? "").trim().toLowerCase();
 const validEmail = (e: string) => e.length <= 120 && /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/.test(e);
 
+// منع حجز ساعة انتهت فعلياً؛ كل الحسابات بتوقيت الرياض
+function riyadhParts(d = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  }).formatToParts(d);
+  const get = (t: string) => parts.find(p => p.type === t)?.value ?? "";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    minutes: Number(get("hour")) * 60 + Number(get("minute"))
+  };
+}
+function slotToMinutes(slot: string): number | null {
+  const s = String(slot ?? "").trim();
+  const m = s.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  let h = Number(m[1]);
+  const min = Number(m[2]);
+  let mer = "";
+  if (/PM|مساء|م/i.test(s)) mer = "PM";
+  else if (/AM|صباح|ص/i.test(s)) mer = "AM";
+  if (mer === "PM" && h < 12) h += 12;
+  if (mer === "AM" && h === 12) h = 0;
+  if (!mer && h < 8) h += 12;
+  return h * 60 + min;
+}
+function isPastSlot(dateStr: string, slot: string, now = riyadhParts()): boolean {
+  const sm = slotToMinutes(slot);
+  if (sm === null) return false;
+  if (dateStr < now.date) return true;
+  if (dateStr > now.date) return false;
+  return sm <= now.minutes;
+}
+
 const enc = new TextEncoder();
 async function hmac(data: string) {
   const secret = Deno.env.get("TOKEN_SECRET") || "";
@@ -152,6 +186,11 @@ Deno.serve(async (req) => {
     const name = String(b.name ?? "").trim().slice(0, 80);
     let lat = Number(b.lat), lng = Number(b.lng);
     if (!name || !/^\d{4}-\d{2}-\d{2}$/.test(b.date) || !b.slot) return json({ error: "بيانات ناقصة" }, 400);
+
+    const nowR = riyadhParts();
+    if (b.date < nowR.date) return json({ error: "التاريخ انتهى، اختر يوماً حالياً أو قادماً" }, 400);
+    if (slotToMinutes(String(b.slot)) === null) return json({ error: "وقت الحجز غير صحيح" }, 400);
+    if (isPastSlot(b.date, String(b.slot), nowR)) return json({ error: "هذه الساعة انتهت، اختر وقتاً قادماً" }, 400);
 
     if (isNaN(lat) || isNaN(lng) || !(lat > 24.31 && lat < 24.71 && lng > 44.19 && lng < 44.59)) {
       lat = 24.5077;

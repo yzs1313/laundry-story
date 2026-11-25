@@ -653,6 +653,15 @@ body {
 }
 .slot-status-tag.available { background: #dcfce7; color: #166534; }
 .slot-status-tag.booked { background: #fee2e2; color: #991b1b; }
+.slot-label.expired,
+.slot-radio:disabled + .slot-label.expired {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #4b5563;
+}
+.slot-status-tag.expired { background: #f3f4f6; color: #4b5563; }
 
 .interval-note-box {
   background: rgba(2, 132, 199, 0.08);

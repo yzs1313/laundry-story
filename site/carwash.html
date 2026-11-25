@@ -786,6 +786,15 @@ body {
 }
 .slot-status-tag.available { background: #dcfce7; color: #166534; }
 .slot-status-tag.booked { background: #fee2e2; color: #991b1b; }
+.slot-label.expired,
+.slot-radio:disabled + .slot-label.expired {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #4b5563;
+}
+.slot-status-tag.expired { background: #f3f4f6; color: #4b5563; }
 
 .interval-note-box {
   background: rgba(2, 132, 199, 0.08);
@@ -2312,6 +2321,40 @@ const $ = id => document.getElementById(id);
 const pad = n => String(n).padStart(2, '0');
 const isoDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+// كل الحسابات بتوقيت الرياض (السعودية بدون توقيت صيفي)
+function riyadhParts(d = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Riyadh", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  }).formatToParts(d);
+  const get = t => parts.find(p => p.type === t)?.value ?? "";
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    minutes: Number(get("hour")) * 60 + Number(get("minute"))
+  };
+}
+function slotToMinutes(slot) {
+  const s = String(slot ?? "").trim();
+  const m = s.match(/(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  let h = Number(m[1]);
+  const min = Number(m[2]);
+  let mer = "";
+  if (/PM|مساء|م/i.test(s)) mer = "PM";
+  else if (/AM|صباح|ص/i.test(s)) mer = "AM";
+  if (mer === "PM" && h < 12) h += 12;
+  if (mer === "AM" && h === 12) h = 0;
+  if (!mer && h < 8) h += 12;   //مثلاً "2:00" تعني 2 العصر في مواعيدنا
+  return h * 60 + min;
+}
+function isPastSlot(dateStr, slot, now = riyadhParts()) {
+  const sm = slotToMinutes(slot);
+  if (sm === null) return false;
+  if (dateStr < now.date) return true;
+  if (dateStr > now.date) return false;
+  return sm <= now.minutes;
+}
+
 const form = $("bookingForm");
 const bookDate = $("bookDate");
 const dayLabel = $("dayLabel");
@@ -2333,9 +2376,9 @@ let otpTimerInterval = null;
 let slotsRequestId = 0;
 
 /* إعداد التاريخ */
-const today = new Date();
-bookDate.min = isoDate(today);
-bookDate.value = isoDate(today);
+const riyadhToday = riyadhParts().date;
+bookDate.min = riyadhToday;
+bookDate.value = riyadhToday;
 
 function getArabicDayName(dateString) {
   if (!dateString) return "";
@@ -2448,12 +2491,19 @@ async function fetchTakenSlots() {
   }
 
   if (reqId !== slotsRequestId || bookDate.value !== targetDate) return;
+  const nowR = riyadhParts();
+  const expired = new Set(CONFIG.slots.filter(s => isPastSlot(targetDate, s, nowR)));
+  expired.forEach(s => { if (!taken.includes(s)) taken.push(s); });
   document.querySelectorAll('input[name="timeSlot"]').forEach(inp => {
+    const isExpired = expired.has(inp.value);
     const isTaken = taken.includes(inp.value);
     inp.disabled = isTaken;
     const label = inp.nextElementSibling;
     if (label) {
-      if (isTaken) {
+      label.classList.toggle("expired", isExpired);
+      if (isExpired) {
+        label.innerHTML = `<span>${inp.value}</span><span class="slot-status-tag expired">انتهت ✕</span>`;
+      } else if (isTaken) {
         label.classList.add("booked");
         label.innerHTML = `<span>${inp.value}</span><span class="slot-status-tag booked">محجوز ✕</span>`;
       } else {
@@ -2472,6 +2522,7 @@ async function fetchTakenSlots() {
 }
 bookDate.addEventListener("input", fetchTakenSlots);
 fetchTakenSlots();
+setInterval(() => { if (!document.hidden) fetchTakenSlots(); }, 60_000);
 
 function getSelectedPackage() {
   const checked = document.querySelector('input[name="pkg"]:checked');
